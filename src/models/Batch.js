@@ -1,0 +1,30 @@
+const mongoose = require('mongoose');
+
+const batchSchema = new mongoose.Schema({
+  batchName: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  batchCode: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    uppercase: true,
+  },
+  joinLink: {
+    type: String,
+    unique: true,
+  },
+  coordinators: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  }],
+  totalMembers: {
+    type: Number,
+    default: 0,
+  },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Batch', batchSchema);
