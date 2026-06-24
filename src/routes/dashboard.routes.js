@@ -1,7 +1,7 @@
-const express = require('express');
-const { getStats, getPendingMemberships, getBatchStats } = require('../controllers/dashboard.controller');
-const { protect } = require('../middlewares/auth.middleware');
-const { authorize } = require('../middlewares/role.middleware');
+import express from 'express';
+import { getStats, getPendingMemberships, getBatchStats } from '../controllers/dashboard.controller.js';
+import { protect } from '../middlewares/auth.middleware.js';
+import { authorize } from '../middlewares/role.middleware.js';
 
 const router = express.Router();
 
@@ -12,4 +12,4 @@ router.get('/stats', getStats);
 router.get('/pending-memberships', getPendingMemberships);
 router.get('/batch-stats', getBatchStats);
 
-module.exports = router;
+export default router;

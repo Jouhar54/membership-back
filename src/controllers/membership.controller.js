@@ -1,5 +1,5 @@
-const membershipService = require('../services/membership.service');
-const { successResponse } = require('../utils/response');
+import * as membershipService from '../services/membership.service.js';
+import { successResponse } from '../utils/response.js';
 
 const register = async (req, res, next) => {
   try {
@@ -64,7 +64,7 @@ const rejectMembership = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export { 
   register,
   getMyMemberships,
   getMembershipById,
@@ -72,4 +72,4 @@ module.exports = {
   markAsPaid,
   approveMembership,
   rejectMembership,
-};
+ };

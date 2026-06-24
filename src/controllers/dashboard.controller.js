@@ -1,7 +1,7 @@
-const Membership = require('../models/Membership');
-const Batch = require('../models/Batch');
-const User = require('../models/User');
-const { successResponse } = require('../utils/response');
+import Membership from '../models/Membership.js';
+import Batch from '../models/Batch.js';
+import User from '../models/User.js';
+import { successResponse } from '../utils/response.js';
 
 const getStats = async (req, res, next) => {
   try {
@@ -42,8 +42,8 @@ const getBatchStats = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export { 
   getStats,
   getPendingMemberships,
   getBatchStats,
-};
+ };

@@ -1,5 +1,5 @@
-const batchService = require('../services/batch.service');
-const { successResponse } = require('../utils/response');
+import * as batchService from '../services/batch.service.js';
+import { successResponse } from '../utils/response.js';
 
 const createBatch = async (req, res, next) => {
   try {
@@ -46,10 +46,10 @@ const deleteBatch = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export { 
   createBatch,
   getBatches,
   getBatchById,
   updateBatch,
   deleteBatch,
-};
+ };

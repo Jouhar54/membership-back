@@ -1,9 +1,9 @@
-const Membership = require('../models/Membership');
-const Batch = require('../models/Batch');
-const ActivityLog = require('../models/ActivityLog');
-const { generateMembershipId } = require('../utils/generateMembershipId');
-const { generatePoster } = require('./poster.service');
-const { sendPosterEmail } = require('./mail.service');
+import Membership from '../models/Membership.js';
+import Batch from '../models/Batch.js';
+import ActivityLog from '../models/ActivityLog.js';
+import { generateMembershipId } from '../utils/generateMembershipId.js';
+import { generatePoster } from './poster.service.js';
+import { sendPosterEmail } from './mail.service.js';
 
 const registerMembership = async (userId, batchId) => {
   const existingMembership = await Membership.findOne({ user: userId, batch: batchId });
@@ -135,7 +135,7 @@ const rejectMembership = async (id, adminId) => {
   return membership;
 };
 
-module.exports = {
+export { 
   registerMembership,
   getMyMemberships,
   getMembershipById,
@@ -143,4 +143,4 @@ module.exports = {
   markAsPaid,
   approveMembership,
   rejectMembership,
-};
+ };

@@ -1,11 +1,12 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 
 // Load env
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 
@@ -34,10 +35,10 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
-const authRoutes = require('./src/routes/auth.routes');
-const batchRoutes = require('./src/routes/batch.routes');
-const membershipRoutes = require('./src/routes/membership.routes');
-const dashboardRoutes = require('./src/routes/dashboard.routes');
+import authRoutes from './src/routes/auth.routes.js';
+import batchRoutes from './src/routes/batch.routes.js';
+import membershipRoutes from './src/routes/membership.routes.js';
+import dashboardRoutes from './src/routes/dashboard.routes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/batches', batchRoutes);
@@ -45,7 +46,7 @@ app.use('/api/v1/memberships', membershipRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Error Middleware
-const { errorHandler } = require('./src/middlewares/error.middleware');
+import { errorHandler } from './src/middlewares/error.middleware.js';
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

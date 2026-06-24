@@ -1,8 +1,8 @@
-const express = require('express');
-const { createBatch, getBatches, getBatchById, updateBatch, deleteBatch } = require('../controllers/batch.controller');
-const { protect } = require('../middlewares/auth.middleware');
-const { authorize } = require('../middlewares/role.middleware');
-const { validate, batchValidation } = require('../utils/validators');
+import express from 'express';
+import { createBatch, getBatches, getBatchById, updateBatch, deleteBatch } from '../controllers/batch.controller.js';
+import { protect } from '../middlewares/auth.middleware.js';
+import { authorize } from '../middlewares/role.middleware.js';
+import { validate, batchValidation } from '../utils/validators.js';
 
 const router = express.Router();
 
@@ -19,4 +19,4 @@ router.route('/:id')
   .patch(batchValidation, validate, updateBatch)
   .delete(deleteBatch);
 
-module.exports = router;
+export default router;

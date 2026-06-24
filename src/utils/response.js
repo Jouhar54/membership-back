@@ -17,4 +17,4 @@ const errorResponse = (res, statusCode, message, errors = []) => {
   });
 };
 
-module.exports = { successResponse, errorResponse };
+export {  successResponse, errorResponse  };

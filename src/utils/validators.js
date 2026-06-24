@@ -1,5 +1,5 @@
-const { body, validationResult } = require('express-validator');
-const { errorResponse } = require('./response');
+import { body, validationResult } from 'express-validator';
+import { errorResponse } from './response.js';
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -25,9 +25,9 @@ const batchValidation = [
   body('batchName').notEmpty().withMessage('Batch name is required'),
 ];
 
-module.exports = {
+export { 
   validate,
   registerValidation,
   loginValidation,
   batchValidation,
-};
+ };

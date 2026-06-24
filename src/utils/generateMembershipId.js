@@ -10,4 +10,4 @@ const generateMembershipId = () => {
   return `AALIA-${year}-${randomNum}`;
 };
 
-module.exports = { generateMembershipId };
+export {  generateMembershipId  };

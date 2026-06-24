@@ -1,6 +1,6 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { errorResponse } = require('../utils/response');
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import { errorResponse } from '../utils/response.js';
 
 const protect = async (req, res, next) => {
   let token;
@@ -29,4 +29,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+export {  protect  };

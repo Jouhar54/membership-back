@@ -1,4 +1,4 @@
-const Batch = require('../models/Batch');
+import Batch from '../models/Batch.js';
 
 const createBatch = async (batchData) => {
   const { batchName, batchCode, joinLink, coordinators } = batchData;
@@ -40,10 +40,10 @@ const deleteBatch = async (id) => {
   return batch;
 };
 
-module.exports = {
+export { 
   createBatch,
   getBatches,
   getBatchById,
   updateBatch,
   deleteBatch,
-};
+ };

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const membershipSchema = new mongoose.Schema({
   user: {
@@ -50,4 +50,4 @@ const membershipSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-module.exports = mongoose.model('Membership', membershipSchema);
+export default mongoose.model('Membership', membershipSchema);

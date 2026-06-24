@@ -1,4 +1,4 @@
-const transporter = require('../config/mail');
+import transporter from '../config/mail.js';
 
 const sendPosterEmail = async (email, fullName, posterUrl) => {
   try {
@@ -23,4 +23,4 @@ const sendPosterEmail = async (email, fullName, posterUrl) => {
   }
 };
 
-module.exports = { sendPosterEmail };
+export {  sendPosterEmail  };

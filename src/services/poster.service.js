@@ -1,5 +1,5 @@
-const { createCanvas, loadImage } = require('canvas');
-const cloudinary = require('../config/cloudinary');
+import { createCanvas, loadImage } from 'canvas';
+import cloudinary from '../config/cloudinary.js';
 
 const generatePoster = async (user, membershipId) => {
   try {
@@ -45,4 +45,4 @@ const generatePoster = async (user, membershipId) => {
   }
 };
 
-module.exports = { generatePoster };
+export {  generatePoster  };
