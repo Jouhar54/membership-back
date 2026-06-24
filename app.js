@@ -39,11 +39,13 @@ import authRoutes from './src/routes/auth.routes.js';
 import batchRoutes from './src/routes/batch.routes.js';
 import membershipRoutes from './src/routes/membership.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
+import adminRoutes from './src/routes/admin.routes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/batches', batchRoutes);
 app.use('/api/v1/memberships', membershipRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Error Middleware
 import { errorHandler } from './src/middlewares/error.middleware.js';
