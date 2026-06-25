@@ -6,17 +6,17 @@ import { validate, batchValidation } from '../utils/validators.js';
 
 const router = express.Router();
 
-// Only admin can manage batches
-router.use(protect);
-router.use(authorize('admin'));
+// Public routes
+router.get('/', getBatches);
 
-router.route('/')
-  .post(batchValidation, validate, createBatch)
-  .get(getBatches);
+// Protected routes
+router.use(protect);
+
+router.post('/', authorize('admin'), batchValidation, validate, createBatch);
 
 router.route('/:id')
-  .get(getBatchById)
-  .patch(batchValidation, validate, updateBatch)
-  .delete(deleteBatch);
+  .get(authorize('admin', 'batch_admin'), getBatchById)
+  .patch(authorize('admin'), batchValidation, validate, updateBatch)
+  .delete(authorize('admin'), deleteBatch);
 
 export default router;

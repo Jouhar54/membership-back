@@ -5,8 +5,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 
 // Load env
-import dotenv from 'dotenv';
-dotenv.config();
+import './src/config/env.js';
 
 const app = express();
 
@@ -40,12 +39,14 @@ import batchRoutes from './src/routes/batch.routes.js';
 import membershipRoutes from './src/routes/membership.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import adminRoutes from './src/routes/admin.routes.js';
+import applicationRoutes from './src/routes/application.routes.js';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/batches', batchRoutes);
 app.use('/api/v1/memberships', membershipRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/applications', applicationRoutes);
 
 // Error Middleware
 import { errorHandler } from './src/middlewares/error.middleware.js';
