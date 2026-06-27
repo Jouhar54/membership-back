@@ -11,8 +11,33 @@ const app = express();
 
 // Security and middleware
 app.use(helmet());
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://membership-front.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173', // Default frontend port
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin matches any allowed origin
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed === origin) return true;
+      if (allowed.includes(',')) {
+        return allowed.split(',').map(item => item.trim()).includes(origin);
+      }
+      return false;
+    });
+
+    if (isAllowed || origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 app.use(express.json());
