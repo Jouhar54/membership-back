@@ -3,8 +3,24 @@ import { successResponse } from '../utils/response.js';
 
 const createApplication = async (req, res, next) => {
   try {
-    const fileBuffer = req.file ? req.file.buffer : null;
-    const application = await applicationService.createApplication(req.body, fileBuffer);
+    let profilePhotoBuffer = null;
+    let signatureBuffer = null;
+
+    if (req.files) {
+      if (req.files.profilePhoto && req.files.profilePhoto[0]) {
+        profilePhotoBuffer = req.files.profilePhoto[0].buffer;
+      }
+      if (req.files.signature && req.files.signature[0]) {
+        signatureBuffer = req.files.signature[0].buffer;
+      }
+    } else if (req.file) {
+      profilePhotoBuffer = req.file.buffer;
+    }
+
+    const application = await applicationService.createApplication(req.body, {
+      profilePhotoBuffer,
+      signatureBuffer,
+    });
     successResponse(res, 201, 'Application submitted successfully', { application });
   } catch (error) {
     next(error);

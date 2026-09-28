@@ -20,8 +20,33 @@ const uploadToCloudinary = (fileBuffer, folder) => {
   });
 };
 
-const createApplication = async (applicationData, fileBuffer) => {
-  const { fullName, email, phone, district, batchId } = applicationData;
+const createApplication = async (applicationData, files = {}) => {
+  const {
+    fullName,
+    fatherName,
+    dob,
+    bloodGroup,
+    houseName,
+    place,
+    post,
+    pin,
+    whatsapp,
+    phone,
+    email,
+    district,
+    state,
+    panchayath,
+    mandalam,
+    thaluk,
+    jobType,
+    jobTypeOther,
+    declarationAccepted,
+    declarationDate,
+    batchId,
+  } = applicationData;
+
+  const profilePhotoBuffer = files.profilePhotoBuffer || (files instanceof Buffer ? files : null);
+  const signatureBuffer = files.signatureBuffer || null;
 
   // 1. Validate batch exists
   const batch = await Batch.findById(batchId);
@@ -40,28 +65,49 @@ const createApplication = async (applicationData, fileBuffer) => {
     throw new Error('Application with this phone number already exists');
   }
 
-  // 3. Upload profile photo to Cloudinary
+  // 3. Upload profile photo & signature to Cloudinary
   let profilePhotoUrl = '';
-  if (fileBuffer) {
-    profilePhotoUrl = await uploadToCloudinary(fileBuffer, 'aalia_profiles');
+  if (profilePhotoBuffer) {
+    profilePhotoUrl = await uploadToCloudinary(profilePhotoBuffer, 'aalia_profiles');
+  }
+
+  let signatureUrl = '';
+  if (signatureBuffer) {
+    signatureUrl = await uploadToCloudinary(signatureBuffer, 'aalia_signatures');
   }
 
   // 4. Store application
   const application = await MembershipApplication.create({
-    fullName: fullName.toUpperCase(),
-    email,
+    fullName: (fullName || '').toUpperCase(),
+    fatherName,
+    dob,
+    bloodGroup,
+    houseName,
+    place,
+    post,
+    pin,
+    whatsapp,
     phone,
+    email,
     district,
+    state: state || 'Kerala',
+    panchayath,
+    mandalam,
+    thaluk,
+    jobType,
+    jobTypeOther,
+    declarationAccepted: declarationAccepted === 'true' || declarationAccepted === true,
+    declarationDate: declarationDate || new Date().toISOString().split('T')[0],
     batch: batchId,
     profilePhoto: profilePhotoUrl,
+    signature: signatureUrl,
     paymentStatus: 'pending',
     membershipStatus: 'pending',
   });
 
   // Log activity
-  // Find a system admin to perform logging if public user is creating the application
   const admin = await User.findOne({ role: 'admin' });
-  const performedBy = admin ? admin._id : application._id; // Fallback to application ID if no admin seeded yet
+  const performedBy = admin ? admin._id : application._id;
 
   await ActivityLog.create({
     user: application._id,
