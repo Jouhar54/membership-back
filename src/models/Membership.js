@@ -32,6 +32,17 @@ const membershipSchema = new mongoose.Schema({
   approvedAt: {
     type: Date,
   },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
+  rejectionReason: {
+    type: String,
+    trim: true,
+  },
+  rejectedAt: {
+    type: Date,
+  },
   membershipId: {
     type: String,
     unique: true,

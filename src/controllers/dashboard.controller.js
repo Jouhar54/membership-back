@@ -21,9 +21,23 @@ const getStats = async (req, res, next) => {
   }
 };
 
+const getRecentRegistrations = async (req, res, next) => {
+  try {
+    const recent = await MembershipApplication.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('batch', 'batchName batchCode');
+    
+    successResponse(res, 200, 'Recent registrations retrieved', { recent });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getPendingMemberships = async (req, res, next) => {
   try {
     const pending = await MembershipApplication.find({ membershipStatus: 'pending' })
+      .sort({ createdAt: -1 })
       .populate('batch', 'batchName batchCode');
     
     successResponse(res, 200, 'Pending memberships retrieved', { pending });
@@ -43,6 +57,7 @@ const getBatchStats = async (req, res, next) => {
 
 export { 
   getStats,
+  getRecentRegistrations,
   getPendingMemberships,
   getBatchStats,
- };
+};

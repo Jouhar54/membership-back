@@ -1,9 +1,9 @@
 import { errorResponse } from '../utils/response.js';
 
 const errorHandler = (err, req, res, next) => {
-  console.error(err.stack);
+  console.error(err.stack || err);
 
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || err.status || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message;
 
   // Mongoose bad ObjectId

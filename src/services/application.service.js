@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import MembershipApplication from '../models/MembershipApplication.js';
 import Batch from '../models/Batch.js';
 import User from '../models/User.js';
@@ -120,18 +121,31 @@ const createApplication = async (applicationData, files = {}) => {
 };
 
 const checkApplicationStatus = async (searchKey) => {
+  const query = [
+    { email: searchKey },
+    { phone: searchKey },
+    { membershipId: searchKey },
+  ];
+  if (mongoose.Types.ObjectId.isValid(searchKey)) {
+    query.push({ _id: searchKey });
+  }
+
   const application = await MembershipApplication.findOne({
-    $or: [{ email: searchKey }, { phone: searchKey }]
+    $or: query
   }).populate('batch');
 
   if (!application) {
-    throw new Error('Application not found');
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
   }
 
   if (application.membershipStatus === 'rejected') {
     return {
       status: 'rejected',
       message: 'Your application has been rejected.',
+      rejectionReason: application.rejectionReason || null,
+      rejectedAt: application.rejectedAt || null,
       _id: application._id,
     };
   }
@@ -164,7 +178,9 @@ const checkApplicationStatus = async (searchKey) => {
 const getApplicationById = async (id) => {
   const application = await MembershipApplication.findById(id).populate('batch');
   if (!application) {
-    throw new Error('Application not found');
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
   }
   return application;
 };
@@ -172,22 +188,52 @@ const getApplicationById = async (id) => {
 const getPosterById = async (id) => {
   const application = await MembershipApplication.findById(id);
   if (!application) {
-    throw new Error('Application not found');
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
   }
   if (application.membershipStatus !== 'approved') {
-    throw new Error('Poster not available. Application is not approved yet.');
+    const error = new Error('Poster not available. Application is not approved yet.');
+    error.statusCode = 400;
+    throw error;
   }
   return application.posterUrl;
 };
 
-const getApplicationsByBatch = async (batchId) => {
-  return await MembershipApplication.find({ batch: batchId }).populate('batch');
+const getApplicationsByBatch = async (batchId, filters = {}) => {
+  const query = {};
+  if (batchId && batchId !== 'all') {
+    query.batch = batchId;
+  }
+  if (filters.status || filters.membershipStatus) {
+    query.membershipStatus = filters.status || filters.membershipStatus;
+  }
+  if (filters.paymentStatus) {
+    query.paymentStatus = filters.paymentStatus;
+  }
+  if (filters.search) {
+    const regex = new RegExp(filters.search.trim(), 'i');
+    query.$or = [
+      { fullName: regex },
+      { email: regex },
+      { phone: regex },
+    ];
+  }
+  return await MembershipApplication.find(query).sort({ createdAt: -1 }).populate('batch');
 };
 
 const markAsPaid = async (id, adminId) => {
   const application = await MembershipApplication.findById(id);
   if (!application) {
-    throw new Error('Application not found');
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (application.membershipStatus === 'rejected') {
+    const error = new Error('Cannot mark payment for a rejected application.');
+    error.statusCode = 400;
+    throw error;
   }
 
   application.paymentStatus = 'paid';
@@ -206,13 +252,24 @@ const markAsPaid = async (id, adminId) => {
 const approveApplication = async (id, adminId) => {
   const application = await MembershipApplication.findById(id).populate('batch');
   if (!application) {
-    throw new Error('Application not found');
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (application.membershipStatus === 'rejected') {
+    const error = new Error('Cannot approve a rejected application');
+    error.statusCode = 400;
+    throw error;
   }
   if (application.paymentStatus !== 'paid') {
-    throw new Error('Cannot approve unpaid application');
+    const error = new Error('Cannot approve application without payment being marked as paid.');
+    error.statusCode = 400;
+    throw error;
   }
   if (application.membershipStatus === 'approved') {
-    throw new Error('Application already approved');
+    const error = new Error('Application already approved');
+    error.statusCode = 400;
+    throw error;
   }
 
   const membershipId = generateMembershipId();
@@ -273,20 +330,27 @@ const approveApplication = async (id, adminId) => {
   return application;
 };
 
-const rejectApplication = async (id, adminId) => {
+const rejectApplication = async (id, adminId, reason = '') => {
   const application = await MembershipApplication.findById(id);
   if (!application) {
-    throw new Error('Application not found');
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
   }
 
   application.membershipStatus = 'rejected';
+  if (reason) {
+    application.rejectionReason = reason;
+  }
+  application.rejectedAt = new Date();
+  application.rejectedBy = adminId;
   await application.save();
 
   await ActivityLog.create({
     user: application._id,
     action: 'APPLICATION_REJECTED',
     performedBy: adminId,
-    metadata: { applicationId: id },
+    metadata: { applicationId: id, rejectionReason: reason },
   });
 
   return application;

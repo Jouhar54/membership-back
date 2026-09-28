@@ -30,7 +30,11 @@ const getMembershipById = async (req, res, next) => {
 
 const getMembershipsByBatch = async (req, res, next) => {
   try {
-    const memberships = await membershipService.getMembershipsByBatch(req.params.batchId);
+    let batchId = req.params.batchId;
+    if (req.user && req.user.role === 'batch_admin' && req.user.batch) {
+      batchId = req.user.batch.toString();
+    }
+    const memberships = await membershipService.getMembershipsByBatch(batchId, req.query);
     successResponse(res, 200, 'Batch memberships retrieved', { memberships });
   } catch (error) {
     next(error);
@@ -57,7 +61,9 @@ const approveMembership = async (req, res, next) => {
 
 const rejectMembership = async (req, res, next) => {
   try {
-    const membership = await membershipService.rejectMembership(req.params.id, req.user._id);
+    const { reason, rejectionReason } = req.body || {};
+    const reasonText = reason || rejectionReason || '';
+    const membership = await membershipService.rejectMembership(req.params.id, req.user._id, reasonText);
     successResponse(res, 200, 'Membership rejected', { membership });
   } catch (error) {
     next(error);

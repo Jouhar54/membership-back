@@ -50,7 +50,11 @@ const getPoster = async (req, res, next) => {
 
 const listBatchApplications = async (req, res, next) => {
   try {
-    const applications = await applicationService.getApplicationsByBatch(req.params.batchId);
+    let batchId = req.params.batchId;
+    if (req.user && req.user.role === 'batch_admin' && req.user.batch) {
+      batchId = req.user.batch.toString();
+    }
+    const applications = await applicationService.getApplicationsByBatch(batchId, req.query);
     successResponse(res, 200, 'Applications retrieved successfully', { applications });
   } catch (error) {
     next(error);
@@ -77,7 +81,9 @@ const approve = async (req, res, next) => {
 
 const reject = async (req, res, next) => {
   try {
-    const application = await applicationService.rejectApplication(req.params.id, req.user._id);
+    const { reason, rejectionReason } = req.body || {};
+    const reasonText = reason || rejectionReason || '';
+    const application = await applicationService.rejectApplication(req.params.id, req.user._id, reasonText);
     successResponse(res, 200, 'Application rejected successfully', { application });
   } catch (error) {
     next(error);

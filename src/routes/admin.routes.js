@@ -18,6 +18,7 @@ router.patch('/batch-admins/:id', authorize('admin'), updateBatchAdminValidation
 router.delete('/batch-admins/:id', authorize('admin'), adminController.deleteBatchAdmin);
 
 // 2. Admin & Batch Admin: Application Management
+router.get('/applications/all', authorize('admin', 'batch_admin'), applicationController.listBatchApplications);
 router.get('/applications/:batchId', authorize('admin', 'batch_admin'), applicationController.listBatchApplications);
 router.patch('/applications/:id/mark-paid', authorize('admin', 'batch_admin'), applicationController.markPaid);
 router.patch('/applications/:id/approve', authorize('admin', 'batch_admin'), applicationController.approve);

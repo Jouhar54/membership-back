@@ -40,17 +40,36 @@ const getMembershipById = async (id) => {
   return membership;
 };
 
-const getMembershipsByBatch = async (batchId) => {
-  return await Membership.find({ batch: batchId }).populate('user', '-password');
+const getMembershipsByBatch = async (batchId, filters = {}) => {
+  const query = {};
+  if (batchId && batchId !== 'all') {
+    query.batch = batchId;
+  }
+  if (filters.status || filters.membershipStatus) {
+    query.membershipStatus = filters.status || filters.membershipStatus;
+  }
+  if (filters.paymentStatus) {
+    query.paymentStatus = filters.paymentStatus;
+  }
+  return await Membership.find(query).sort({ createdAt: -1 }).populate('user', '-password').populate('batch');
 };
 
 const markAsPaid = async (id, adminId) => {
-  const membership = await Membership.findByIdAndUpdate(
-    id,
-    { paymentStatus: 'paid' },
-    { new: true }
-  );
-  if (!membership) throw new Error('Membership not found');
+  const membership = await Membership.findById(id);
+  if (!membership) {
+    const error = new Error('Membership not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (membership.membershipStatus === 'rejected') {
+    const error = new Error('Cannot mark payment for a rejected application.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  membership.paymentStatus = 'paid';
+  await membership.save();
 
   await ActivityLog.create({
     user: membership.user,
@@ -64,15 +83,32 @@ const markAsPaid = async (id, adminId) => {
 
 const approveMembership = async (id, adminId) => {
   let membership = await Membership.findById(id).populate('user');
-  if (!membership) throw new Error('Membership not found');
-  if (membership.paymentStatus !== 'paid') throw new Error('Cannot approve unpaid membership');
-  if (membership.membershipStatus === 'approved') throw new Error('Already approved');
+  if (!membership) {
+    const error = new Error('Membership not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (membership.membershipStatus === 'rejected') {
+    const error = new Error('Cannot approve a rejected membership');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (membership.paymentStatus !== 'paid') {
+    const error = new Error('Cannot approve application without payment being marked as paid.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (membership.membershipStatus === 'approved') {
+    const error = new Error('Already approved');
+    error.statusCode = 400;
+    throw error;
+  }
 
   const memId = generateMembershipId();
 
   membership.membershipStatus = 'approved';
   membership.approvedBy = adminId;
-  membership.approvedAt = Date.now();
+  membership.approvedAt = new Date();
   membership.membershipId = memId;
 
   await membership.save();
@@ -117,19 +153,27 @@ const generateAndSendPoster = async (membershipId) => {
   }
 };
 
-const rejectMembership = async (id, adminId) => {
-  const membership = await Membership.findByIdAndUpdate(
-    id,
-    { membershipStatus: 'rejected' },
-    { new: true }
-  );
-  if (!membership) throw new Error('Membership not found');
+const rejectMembership = async (id, adminId, reason = '') => {
+  const membership = await Membership.findById(id);
+  if (!membership) {
+    const error = new Error('Membership not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  membership.membershipStatus = 'rejected';
+  if (reason) {
+    membership.rejectionReason = reason;
+  }
+  membership.rejectedAt = new Date();
+  membership.rejectedBy = adminId;
+  await membership.save();
 
   await ActivityLog.create({
     user: membership.user,
     action: 'Membership rejected',
     performedBy: adminId,
-    metadata: { membershipId: id },
+    metadata: { membershipId: id, rejectionReason: reason },
   });
 
   return membership;
