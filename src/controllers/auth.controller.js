@@ -15,13 +15,16 @@ const login = async (req, res, next) => {
     const { email, password } = req.body;
     const { user, tokens } = await authService.loginUser(email, password);
 
-    // Set refresh token in httpOnly cookie
-    res.cookie('refreshToken', tokens.refreshToken, {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    };
+
+    // Set refresh token in httpOnly cookie
+    res.cookie('refreshToken', tokens.refreshToken, cookieOptions);
 
     successResponse(res, 200, 'Login successful', {
       user,
@@ -34,7 +37,12 @@ const login = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    res.clearCookie('refreshToken');
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+    });
     successResponse(res, 200, 'Logged out successfully');
   } catch (error) {
     next(error);
@@ -46,16 +54,22 @@ const refreshToken = async (req, res, next) => {
     const token = req.cookies.refreshToken;
     const tokens = await authService.refreshAuthToken(token);
 
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     successResponse(res, 200, 'Token refreshed', { accessToken: tokens.accessToken });
   } catch (error) {
-    res.clearCookie('refreshToken');
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+    });
     errorResponse(res, 401, error.message);
   }
 };

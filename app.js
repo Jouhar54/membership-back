@@ -14,7 +14,10 @@ app.use(helmet());
 
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:3000',
   'https://membership-front.vercel.app',
+  'https://aaliamembership.com',
+  'https://www.aaliamembership.com',
   process.env.CLIENT_URL
 ].filter(Boolean);
 
@@ -23,7 +26,7 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps, curl, postman)
     if (!origin) return callback(null, true);
     
-    // Check if origin matches any allowed origin
+    // Check if origin matches any allowed origin directly or comma-separated
     const isAllowed = allowedOrigins.some(allowed => {
       if (allowed === origin) return true;
       if (allowed.includes(',')) {
@@ -32,13 +35,22 @@ app.use(cors({
       return false;
     });
 
-    if (isAllowed || origin.endsWith('.vercel.app')) {
+    // Also allow any subdomain of vercel.app or aaliamembership.com
+    const isDomainMatch = 
+      origin.endsWith('.vercel.app') || 
+      origin === 'https://aaliamembership.com' ||
+      origin === 'http://aaliamembership.com' ||
+      origin.endsWith('.aaliamembership.com');
+
+    if (isAllowed || isDomainMatch) {
       return callback(null, true);
     }
     
-    return callback(new Error('Not allowed by CORS'));
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
