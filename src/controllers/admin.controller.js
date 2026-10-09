@@ -40,7 +40,8 @@ const updateBatchAdmin = async (req, res, next) => {
 
 const deleteBatchAdmin = async (req, res, next) => {
   try {
-    await adminService.deleteBatchAdmin(req.params.id, req.user._id);
+    const { password } = req.body;
+    await adminService.deleteBatchAdmin(req.params.id, req.user._id, password);
     successResponse(res, 200, 'Batch admin deleted successfully');
   } catch (error) {
     next(error);

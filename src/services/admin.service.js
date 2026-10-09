@@ -154,10 +154,32 @@ const updateBatchAdmin = async (id, updateData, performedBy) => {
   return admin;
 };
 
-const deleteBatchAdmin = async (id, performedBy) => {
+const deleteBatchAdmin = async (id, performedBy, password) => {
+  if (!password) {
+    const error = new Error('Administrator password is required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const performingAdmin = await User.findById(performedBy);
+  if (!performingAdmin) {
+    const error = new Error('Administrator account not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const isMatch = await bcrypt.compare(password, performingAdmin.password);
+  if (!isMatch) {
+    const error = new Error('Invalid administrator password');
+    error.statusCode = 401;
+    throw error;
+  }
+
   const admin = await User.findOne({ _id: id, role: 'batch_admin' });
   if (!admin) {
-    throw new Error('Batch admin not found');
+    const error = new Error('Batch admin not found');
+    error.statusCode = 404;
+    throw error;
   }
 
   // Remove from batch coordinators
@@ -175,7 +197,7 @@ const deleteBatchAdmin = async (id, performedBy) => {
     user: id,
     action: 'BATCH_ADMIN_DELETED',
     performedBy,
-    metadata: { email: admin.email },
+    metadata: { email: admin.email, fullName: admin.fullName },
   });
 
   return true;

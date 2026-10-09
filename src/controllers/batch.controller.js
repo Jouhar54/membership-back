@@ -39,8 +39,9 @@ const updateBatch = async (req, res, next) => {
 
 const deleteBatch = async (req, res, next) => {
   try {
-    await batchService.deleteBatch(req.params.id);
-    successResponse(res, 200, 'Batch deleted');
+    const { password } = req.body;
+    await batchService.deleteBatch(req.params.id, req.user._id, password);
+    successResponse(res, 200, 'Batch deleted successfully');
   } catch (error) {
     next(error);
   }

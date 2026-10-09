@@ -1,4 +1,7 @@
+import bcrypt from 'bcryptjs';
 import Batch from '../models/Batch.js';
+import User from '../models/User.js';
+import ActivityLog from '../models/ActivityLog.js';
 
 const createBatch = async (batchData) => {
   const { batchName, batchCode, joinLink, coordinators } = batchData;
@@ -34,9 +37,45 @@ const updateBatch = async (id, updateData) => {
   return batch;
 };
 
-const deleteBatch = async (id) => {
+const deleteBatch = async (id, performedBy, password) => {
+  if (!password) {
+    const error = new Error('Administrator password is required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const admin = await User.findById(performedBy);
+  if (!admin) {
+    const error = new Error('Administrator account not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const isMatch = await bcrypt.compare(password, admin.password);
+  if (!isMatch) {
+    const error = new Error('Invalid administrator password');
+    error.statusCode = 401;
+    throw error;
+  }
+
   const batch = await Batch.findByIdAndDelete(id);
-  if (!batch) throw new Error('Batch not found');
+  if (!batch) {
+    const error = new Error('Batch not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Remove batch association from any users assigned to this batch
+  await User.updateMany({ batch: id }, { $unset: { batch: 1 } });
+
+  // Log activity
+  await ActivityLog.create({
+    user: admin._id,
+    action: 'BATCH_DELETED',
+    performedBy,
+    metadata: { batchId: id, batchName: batch.batchName, batchCode: batch.batchCode },
+  });
+
   return batch;
 };
 
