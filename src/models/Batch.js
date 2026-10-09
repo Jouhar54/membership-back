@@ -15,7 +15,7 @@ const batchSchema = new mongoose.Schema({
   },
   joinLink: {
     type: String,
-    unique: true,
+    trim: true,
   },
   coordinators: [{
     type: mongoose.Schema.Types.ObjectId,
