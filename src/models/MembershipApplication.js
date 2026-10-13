@@ -94,9 +94,6 @@ const membershipApplicationSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  signature: {
-    type: String, // Cloudinary URL
-  },
   profilePhoto: {
     type: String, // Cloudinary URL
   },

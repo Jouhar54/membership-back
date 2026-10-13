@@ -7,10 +7,7 @@ const router = express.Router();
 
 router.post(
   '/',
-  upload.fields([
-    { name: 'profilePhoto', maxCount: 1 },
-    { name: 'signature', maxCount: 1 },
-  ]),
+  upload.single('profilePhoto'),
   createApplicationValidation,
   applicationController.createApplication
 );

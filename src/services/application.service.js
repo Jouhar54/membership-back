@@ -21,7 +21,7 @@ const uploadToCloudinary = (fileBuffer, folder) => {
   });
 };
 
-const createApplication = async (applicationData, files = {}) => {
+const createApplication = async (applicationData, fileBuffer = null) => {
   const {
     fullName,
     fatherName,
@@ -46,8 +46,9 @@ const createApplication = async (applicationData, files = {}) => {
     batchId,
   } = applicationData;
 
-  const profilePhotoBuffer = files.profilePhotoBuffer || (files instanceof Buffer ? files : null);
-  const signatureBuffer = files.signatureBuffer || null;
+  const profilePhotoBuffer = fileBuffer && fileBuffer.profilePhotoBuffer
+    ? fileBuffer.profilePhotoBuffer
+    : (fileBuffer instanceof Buffer ? fileBuffer : null);
 
   // 1. Validate batch exists
   const batch = await Batch.findById(batchId);
@@ -66,15 +67,10 @@ const createApplication = async (applicationData, files = {}) => {
     throw new Error('Application with this phone number already exists');
   }
 
-  // 3. Upload profile photo & signature to Cloudinary
+  // 3. Upload profile photo to Cloudinary
   let profilePhotoUrl = '';
   if (profilePhotoBuffer) {
     profilePhotoUrl = await uploadToCloudinary(profilePhotoBuffer, 'aalia_profiles');
-  }
-
-  let signatureUrl = '';
-  if (signatureBuffer) {
-    signatureUrl = await uploadToCloudinary(signatureBuffer, 'aalia_signatures');
   }
 
   // 4. Store application
@@ -101,7 +97,6 @@ const createApplication = async (applicationData, files = {}) => {
     declarationDate: declarationDate || new Date().toISOString().split('T')[0],
     batch: batchId,
     profilePhoto: profilePhotoUrl,
-    signature: signatureUrl,
     paymentStatus: 'pending',
     membershipStatus: 'pending',
   });
