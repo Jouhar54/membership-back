@@ -6,6 +6,14 @@ const createApplication = async (req, res, next) => {
     let profilePhotoBuffer = null;
     if (req.file) {
       profilePhotoBuffer = req.file.buffer;
+    } else if (Array.isArray(req.files) && req.files.length > 0) {
+      const photoFile =
+        req.files.find(
+          (f) => f.fieldname === 'profilePhoto' || f.fieldname === 'photo' || f.fieldname === 'image'
+        ) || req.files.find((f) => f.fieldname !== 'signature') || req.files[0];
+      if (photoFile) {
+        profilePhotoBuffer = photoFile.buffer;
+      }
     } else if (req.files && req.files.profilePhoto && req.files.profilePhoto[0]) {
       profilePhotoBuffer = req.files.profilePhoto[0].buffer;
     }

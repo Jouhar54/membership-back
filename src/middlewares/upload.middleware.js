@@ -4,6 +4,11 @@ import multer from 'multer';
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
+  // Ignore signature field if still sent by client/cached frontend
+  if (file.fieldname === 'signature') {
+    return cb(null, false);
+  }
+
   if (file.mimetype.startsWith('image')) {
     cb(null, true);
   } else {

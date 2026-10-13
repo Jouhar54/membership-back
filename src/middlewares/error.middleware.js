@@ -24,6 +24,11 @@ const errorHandler = (err, req, res, next) => {
     message = Object.values(err.errors).map((val) => val.message).join(', ');
   }
 
+  // Multer error
+  if (err.name === 'MulterError') {
+    statusCode = 400;
+  }
+
   res.status(statusCode).json({
     success: false,
     message,

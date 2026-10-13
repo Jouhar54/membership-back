@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post(
   '/',
-  upload.single('profilePhoto'),
+  upload.any(),
   createApplicationValidation,
   applicationController.createApplication
 );
