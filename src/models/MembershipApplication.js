@@ -97,6 +97,12 @@ const membershipApplicationSchema = new mongoose.Schema({
   profilePhoto: {
     type: String, // Cloudinary URL
   },
+  paymentScreenshot: {
+    type: String, // Cloudinary URL
+  },
+  paymentProof: {
+    type: String, // Cloudinary URL
+  },
   paymentStatus: {
     type: String,
     enum: ['pending', 'paid'],

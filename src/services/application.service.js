@@ -46,9 +46,15 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     batchId,
   } = applicationData;
 
-  const profilePhotoBuffer = fileBuffer && fileBuffer.profilePhotoBuffer
-    ? fileBuffer.profilePhotoBuffer
-    : (fileBuffer instanceof Buffer ? fileBuffer : null);
+  let profilePhotoBuffer = null;
+  let paymentScreenshotBuffer = null;
+
+  if (fileBuffer instanceof Buffer) {
+    profilePhotoBuffer = fileBuffer;
+  } else if (fileBuffer && typeof fileBuffer === 'object') {
+    profilePhotoBuffer = fileBuffer.profilePhotoBuffer || null;
+    paymentScreenshotBuffer = fileBuffer.paymentScreenshotBuffer || null;
+  }
 
   // 1. Validate batch exists
   const batch = await Batch.findById(batchId);
@@ -71,6 +77,12 @@ const createApplication = async (applicationData, fileBuffer = null) => {
   let profilePhotoUrl = '';
   if (profilePhotoBuffer) {
     profilePhotoUrl = await uploadToCloudinary(profilePhotoBuffer, 'aalia_profiles');
+  }
+
+  // 3.1 Upload payment screenshot to Cloudinary
+  let paymentScreenshotUrl = '';
+  if (paymentScreenshotBuffer) {
+    paymentScreenshotUrl = await uploadToCloudinary(paymentScreenshotBuffer, 'aalia_payments');
   }
 
   // 4. Store application
@@ -97,6 +109,8 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     declarationDate: declarationDate || new Date().toISOString().split('T')[0],
     batch: batchId,
     profilePhoto: profilePhotoUrl,
+    paymentScreenshot: paymentScreenshotUrl,
+    paymentProof: paymentScreenshotUrl,
     paymentStatus: 'pending',
     membershipStatus: 'pending',
   });
