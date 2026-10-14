@@ -5,16 +5,41 @@ import { successResponse } from '../utils/response.js';
 
 const getStats = async (req, res, next) => {
   try {
+    const isBatchAdmin = req.user && req.user.role === 'batch_admin' && req.user.batch;
+    const filter = isBatchAdmin ? { batch: req.user.batch } : {};
+
+    const totalMemberships = await MembershipApplication.countDocuments(filter);
+    const approvedMemberships = await MembershipApplication.countDocuments({ ...filter, membershipStatus: 'approved' });
+    const pendingMemberships = await MembershipApplication.countDocuments({ ...filter, membershipStatus: 'pending' });
+    const paidMemberships = await MembershipApplication.countDocuments({ ...filter, paymentStatus: 'paid' });
+    const pendingPaymentMemberships = await MembershipApplication.countDocuments({ ...filter, paymentStatus: 'pending' });
+
+    if (isBatchAdmin) {
+      const assignedBatch = await Batch.findById(req.user.batch).select('batchName batchCode');
+      return successResponse(res, 200, 'Dashboard stats retrieved', {
+        totalMemberships,
+        approvedMemberships,
+        pendingMemberships,
+        paidMemberships,
+        pendingPaymentMemberships,
+        batchName: assignedBatch?.batchName || '',
+        batchCode: assignedBatch?.batchCode || '',
+        isBatchAdmin: true,
+      });
+    }
+
     const totalUsers = await User.countDocuments();
     const totalBatches = await Batch.countDocuments();
-    const totalMemberships = await MembershipApplication.countDocuments();
-    const approvedMemberships = await MembershipApplication.countDocuments({ membershipStatus: 'approved' });
 
     successResponse(res, 200, 'Dashboard stats retrieved', {
       totalUsers,
       totalBatches,
       totalMemberships,
       approvedMemberships,
+      pendingMemberships,
+      paidMemberships,
+      pendingPaymentMemberships,
+      isBatchAdmin: false,
     });
   } catch (error) {
     next(error);
@@ -23,7 +48,10 @@ const getStats = async (req, res, next) => {
 
 const getRecentRegistrations = async (req, res, next) => {
   try {
-    const recent = await MembershipApplication.find()
+    const isBatchAdmin = req.user && req.user.role === 'batch_admin' && req.user.batch;
+    const filter = isBatchAdmin ? { batch: req.user.batch } : {};
+
+    const recent = await MembershipApplication.find(filter)
       .sort({ createdAt: -1 })
       .limit(10)
       .populate('batch', 'batchName batchCode');
@@ -36,7 +64,13 @@ const getRecentRegistrations = async (req, res, next) => {
 
 const getPendingMemberships = async (req, res, next) => {
   try {
-    const pending = await MembershipApplication.find({ membershipStatus: 'pending' })
+    const isBatchAdmin = req.user && req.user.role === 'batch_admin' && req.user.batch;
+    const filter = {
+      membershipStatus: 'pending',
+      ...(isBatchAdmin ? { batch: req.user.batch } : {}),
+    };
+
+    const pending = await MembershipApplication.find(filter)
       .sort({ createdAt: -1 })
       .populate('batch', 'batchName batchCode');
     
@@ -48,7 +82,9 @@ const getPendingMemberships = async (req, res, next) => {
 
 const getBatchStats = async (req, res, next) => {
   try {
-    const batches = await Batch.find().select('batchName batchCode totalMembers');
+    const isBatchAdmin = req.user && req.user.role === 'batch_admin' && req.user.batch;
+    const filter = isBatchAdmin ? { _id: req.user.batch } : {};
+    const batches = await Batch.find(filter).select('batchName batchCode totalMembers');
     successResponse(res, 200, 'Batch stats retrieved', { batches });
   } catch (error) {
     next(error);
