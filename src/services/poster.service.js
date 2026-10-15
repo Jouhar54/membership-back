@@ -1,137 +1,111 @@
 import { createCanvas, loadImage } from 'canvas';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import cloudinary from '../config/cloudinary.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Helper to locate the campaign poster template
+const getTemplatePath = () => {
+  const candidates = [
+    path.resolve(__dirname, '../assets/poster-template.png'),
+    path.resolve(process.cwd(), 'src/assets/poster-template.png'),
+    path.resolve(__dirname, '../../../membership-front/src/assets/image.png'),
+    path.resolve(process.cwd(), '../membership-front/src/assets/image.png'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return candidates[0];
+};
+
+const drawFallbackPhoto = (ctx, user, bx, by, bw, bh) => {
+  ctx.fillStyle = '#16213e';
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 72px sans-serif';
+  const initials = (user?.fullName || 'M')
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  ctx.fillText(initials || 'A', bx + bw / 2, by + bh / 2 + 25);
+};
 
 const generatePoster = async (user, membershipId) => {
   try {
-    const width = 800;
-    const height = 1000;
+    const templatePath = getTemplatePath();
+    const template = await loadImage(templatePath);
+
+    const width = template.width;
+    const height = template.height;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // 1. Draw Background Gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(0.5, '#16213e');
-    gradient.addColorStop(1, '#0f3460');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+    // 1. Draw Template Base Poster
+    ctx.drawImage(template, 0, 0, width, height);
 
-    // Decorative circles
-    ctx.fillStyle = 'rgba(233, 69, 96, 0.1)';
+    // 2. White space rounded rectangle bounds
+    // Coordinates matching the white placeholder in the template:
+    // x: 199, y: 284, width: 300, height: 379, corner radius: 45
+    const bx = 199;
+    const by = 284;
+    const bw = 300;
+    const bh = 379;
+    const radius = 45;
+
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(100, 100, 150, 0, Math.PI * 2);
-    ctx.fill();
+    if (ctx.roundRect) {
+      ctx.roundRect(bx, by, bw, bh, radius);
+    } else {
+      ctx.moveTo(bx + radius, by);
+      ctx.lineTo(bx + bw - radius, by);
+      ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + radius);
+      ctx.lineTo(bx + bw, by + bh - radius);
+      ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - radius, by + bh);
+      ctx.lineTo(bx + radius, by + bh);
+      ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - radius);
+      ctx.lineTo(bx, by + radius);
+      ctx.quadraticCurveTo(bx, by, bx + radius, by);
+      ctx.closePath();
+    }
+    ctx.clip();
 
-    ctx.fillStyle = 'rgba(78, 205, 196, 0.05)';
-    ctx.beginPath();
-    ctx.arc(700, 900, 250, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Draw Title / Header
-    ctx.font = 'bold 45px sans-serif';
-    ctx.fillStyle = '#e94560';
-    ctx.textAlign = 'center';
-    ctx.fillText('AALIA MEMBERSHIP', width / 2, 100);
-
-    ctx.font = '20px sans-serif';
-    ctx.fillStyle = '#8f94fb';
-    ctx.fillText('Official Member Card', width / 2, 135);
-
-    // 3. Draw Profile Picture
-    const imgSize = 220;
-    const imgX = (width - imgSize) / 2;
-    const imgY = 180;
-
-    if (user.profilePhoto) {
+    // 3. Draw Member Profile Photo (with object-fit cover scaling)
+    if (user?.profilePhoto) {
       try {
-        const img = await loadImage(user.profilePhoto);
-        
-        ctx.save();
-        ctx.beginPath();
-        // Circular clipping
-        ctx.arc(width / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        
-        ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
-        ctx.restore();
+        const photo = await loadImage(user.profilePhoto);
+        const scale = Math.max(bw / photo.width, bh / photo.height);
+        const sw = bw / scale;
+        const sh = bh / scale;
+        const sx = (photo.width - sw) / 2;
+        const sy = (photo.height - sh) / 2;
 
-        // Border around photo
-        ctx.strokeStyle = '#e94560';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(width / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.fillStyle = '#0f3460';
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.drawImage(photo, sx, sy, sw, sh, bx, by, bw, bh);
       } catch (err) {
         console.error('Failed to load profile photo on canvas:', err.message);
-        // Draw placeholder if image fails to load
-        ctx.fillStyle = '#333';
-        ctx.beginPath();
-        ctx.arc(width / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2);
-        ctx.fill();
+        drawFallbackPhoto(ctx, user, bx, by, bw, bh);
       }
     } else {
-      // Draw placeholder circle
-      ctx.fillStyle = '#333';
-      ctx.beginPath();
-      ctx.arc(width / 2, imgY + imgSize / 2, imgSize / 2, 0, Math.PI * 2);
-      ctx.fill();
+      drawFallbackPhoto(ctx, user, bx, by, bw, bh);
     }
 
-    // 4. Draw Card / Details Box
-    const boxX = 100;
-    const boxY = 470;
-    const boxWidth = 600;
-    const boxHeight = 400;
-    const cornerRadius = 20;
+    ctx.restore();
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 1;
-
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(boxX, boxY, boxWidth, boxHeight, cornerRadius) : ctx.rect(boxX, boxY, boxWidth, boxHeight);
-    ctx.fill();
-    ctx.stroke();
-
-    // 5. Draw Details
-    ctx.textAlign = 'left';
-    
-    // Member Name
-    ctx.font = 'bold 36px sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(user.fullName.toUpperCase(), boxX + 50, boxY + 80);
-
-    // Membership ID
-    ctx.font = 'normal 22px sans-serif';
-    ctx.fillStyle = '#8f94fb';
-    ctx.fillText('MEMBERSHIP ID', boxX + 50, boxY + 150);
-    ctx.font = 'bold 28px sans-serif';
-    ctx.fillStyle = '#e94560';
-    ctx.fillText(membershipId, boxX + 50, boxY + 190);
-
-    // District
-    ctx.font = 'normal 22px sans-serif';
-    ctx.fillStyle = '#8f94fb';
-    ctx.fillText('DISTRICT', boxX + 350, boxY + 150);
-    ctx.font = 'bold 28px sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(user.district || 'NOT SPECIFIED', boxX + 350, boxY + 190);
-
-    // Batch Details (if provided)
-    if (user.batchName) {
-      ctx.font = 'normal 22px sans-serif';
-      ctx.fillStyle = '#8f94fb';
-      ctx.fillText('BATCH', boxX + 50, boxY + 270);
-      ctx.font = 'bold 28px sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(user.batchName, boxX + 50, boxY + 310);
-    }
-
-    // Convert canvas to buffer
+    // 4. Convert canvas to buffer
     const buffer = canvas.toBuffer('image/png');
 
-    // Upload to Cloudinary
+    // 5. Upload to Cloudinary
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'aalia_posters' },
