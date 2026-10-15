@@ -5,7 +5,6 @@ import User from '../models/User.js';
 import ActivityLog from '../models/ActivityLog.js';
 import cloudinary from '../config/cloudinary.js';
 import { generatePoster } from './poster.service.js';
-import { sendPosterEmail } from './mail.service.js';
 import { generateMembershipId } from '../utils/generateMembershipId.js';
 
 const uploadToCloudinary = (fileBuffer, folder) => {
@@ -285,36 +284,15 @@ const approveApplication = async (id, adminId) => {
 
   const membershipId = generateMembershipId();
 
-  // Generate poster
-  const userDetails = {
-    fullName: application.fullName,
-    district: application.district,
-    profilePhoto: application.profilePhoto,
-    batchName: application.batch ? application.batch.batchName : null,
-  };
-
-  const posterUrl = await generatePoster(userDetails, membershipId);
-
-  // Update statuses
+  // Update statuses immediately
   application.membershipStatus = 'approved';
   application.membershipId = membershipId;
-  application.posterUrl = posterUrl;
-  application.posterGenerated = true;
   application.approvedBy = adminId;
   application.approvedAt = new Date();
 
-  // Send Email with Nodemailer
-  let emailSent = false;
-  try {
-    emailSent = await sendPosterEmail(application.email, application.fullName, posterUrl);
-    application.emailSent = emailSent;
-  } catch (err) {
-    console.error('Error sending email:', err.message);
-  }
-
   await application.save();
 
-  // Activity Logs
+  // Activity Log for Approval
   await ActivityLog.create({
     user: application._id,
     action: 'APPLICATION_APPROVED',
@@ -322,23 +300,40 @@ const approveApplication = async (id, adminId) => {
     metadata: { membershipId },
   });
 
-  await ActivityLog.create({
-    user: application._id,
-    action: 'POSTER_GENERATED',
-    performedBy: adminId,
-    metadata: { posterUrl },
-  });
-
-  if (emailSent) {
-    await ActivityLog.create({
-      user: application._id,
-      action: 'EMAIL_SENT',
-      performedBy: adminId,
-      metadata: { email: application.email },
-    });
-  }
+  // Background Task: generate poster & send email asynchronously without blocking the response
+  generateAndSendApplicationPoster(application._id, adminId);
 
   return application;
+};
+
+const generateAndSendApplicationPoster = async (applicationId, adminId) => {
+  try {
+    const application = await MembershipApplication.findById(applicationId).populate('batch');
+    if (!application) return;
+
+    // Generate poster
+    const userDetails = {
+      fullName: application.fullName,
+      district: application.district,
+      profilePhoto: application.profilePhoto,
+      batchName: application.batch ? application.batch.batchName : null,
+    };
+
+    const posterUrl = await generatePoster(userDetails, application.membershipId);
+
+    application.posterUrl = posterUrl;
+    application.posterGenerated = true;
+    await application.save();
+
+    await ActivityLog.create({
+      user: application._id,
+      action: 'POSTER_GENERATED',
+      performedBy: adminId,
+      metadata: { posterUrl },
+    });
+  } catch (error) {
+    console.error('Error in background job for application poster:', error);
+  }
 };
 
 const rejectApplication = async (id, adminId, reason = '') => {

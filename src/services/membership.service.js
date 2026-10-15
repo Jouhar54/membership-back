@@ -3,7 +3,6 @@ import Batch from '../models/Batch.js';
 import ActivityLog from '../models/ActivityLog.js';
 import { generateMembershipId } from '../utils/generateMembershipId.js';
 import { generatePoster } from './poster.service.js';
-import { sendPosterEmail } from './mail.service.js';
 
 const registerMembership = async (userId, batchId) => {
   const existingMembership = await Membership.findOne({ user: userId, batch: batchId });
@@ -135,21 +134,16 @@ const generateAndSendPoster = async (membershipId) => {
     const posterUrl = await generatePoster(membership.user, membership.membershipId);
     membership.posterUrl = posterUrl;
     membership.posterGenerated = true;
-
-    // Send Email
-    const emailSent = await sendPosterEmail(membership.user.email, membership.user.fullName, posterUrl);
-    membership.emailSent = emailSent;
-
     await membership.save();
 
     await ActivityLog.create({
       user: membership.user._id,
-      action: 'Poster generated and email sent',
+      action: 'Poster generated',
       performedBy: membership.approvedBy,
-      metadata: { posterUrl, emailSent },
+      metadata: { posterUrl },
     });
   } catch (error) {
-    console.error('Error in background job for poster/email:', error);
+    console.error('Error in background job for poster:', error);
   }
 };
 
