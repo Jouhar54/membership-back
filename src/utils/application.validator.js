@@ -29,6 +29,7 @@ const createApplicationValidation = [
   body('thaluk').optional().trim(),
   body('jobType').optional().trim(),
   body('jobTypeOther').optional().trim(),
+  body('anwariCertificateNo').optional().trim(),
   body('declarationAccepted').optional(),
   body('declarationDate').optional().trim(),
   validate,

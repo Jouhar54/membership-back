@@ -86,6 +86,10 @@ const membershipApplicationSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  anwariCertificateNo: {
+    type: String,
+    trim: true,
+  },
   declarationAccepted: {
     type: Boolean,
     default: false,
