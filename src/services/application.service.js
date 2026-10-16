@@ -127,6 +127,11 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     metadata: { email: application.email, batchId },
   });
 
+  // Update batch total members
+  if (batchId) {
+    await Batch.findByIdAndUpdate(batchId, { $inc: { totalMembers: 1 } });
+  }
+
   return application;
 };
 
@@ -344,6 +349,8 @@ const rejectApplication = async (id, adminId, reason = '') => {
     throw error;
   }
 
+  const wasAlreadyRejected = application.membershipStatus === 'rejected';
+
   application.membershipStatus = 'rejected';
   if (reason) {
     application.rejectionReason = reason;
@@ -351,6 +358,11 @@ const rejectApplication = async (id, adminId, reason = '') => {
   application.rejectedAt = new Date();
   application.rejectedBy = adminId;
   await application.save();
+
+  // If application was not previously rejected, decrement batch member count
+  if (!wasAlreadyRejected && application.batch) {
+    await Batch.findByIdAndUpdate(application.batch, { $inc: { totalMembers: -1 } });
+  }
 
   await ActivityLog.create({
     user: application._id,

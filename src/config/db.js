@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { syncBatchMemberCounts } from '../services/batch.service.js';
 
 const connectDB = async () => {
   try {
@@ -11,6 +12,14 @@ const connectDB = async () => {
       console.log('Obsolete joinLink_1 index dropped from batches collection');
     } catch (indexErr) {
       // Index does not exist or already dropped, ignore
+    }
+
+    // Sync batches totalMembers count with existing membership applications
+    try {
+      await syncBatchMemberCounts();
+      console.log('Batch member counts synchronized with membership applications');
+    } catch (syncErr) {
+      console.error('Failed to sync batch member counts on startup:', syncErr);
     }
   } catch (error) {
     console.error(`Error: ${error.message}`);

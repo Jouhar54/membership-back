@@ -84,8 +84,33 @@ const getBatchStats = async (req, res, next) => {
   try {
     const isBatchAdmin = req.user && req.user.role === 'batch_admin' && req.user.batch;
     const filter = isBatchAdmin ? { _id: req.user.batch } : {};
-    const batches = await Batch.find(filter).select('batchName batchCode totalMembers');
-    successResponse(res, 200, 'Batch stats retrieved', { batches });
+
+    const [batches, counts] = await Promise.all([
+      Batch.find(filter).select('batchName batchCode totalMembers'),
+      MembershipApplication.aggregate([
+        { $match: { membershipStatus: { $ne: 'rejected' } } },
+        { $group: { _id: '$batch', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const countMap = new Map();
+    counts.forEach((c) => {
+      if (c._id) {
+        countMap.set(c._id.toString(), c.count);
+      }
+    });
+
+    const enrichedBatches = batches.map((batch) => {
+      const batchObj = batch.toObject ? batch.toObject() : { ...batch };
+      const memberCount = countMap.get(batch._id.toString()) || 0;
+      return {
+        ...batchObj,
+        totalMembers: memberCount,
+        memberCount: memberCount,
+      };
+    });
+
+    successResponse(res, 200, 'Batch stats retrieved', { batches: enrichedBatches });
   } catch (error) {
     next(error);
   }
