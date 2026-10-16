@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, getMyMemberships, getMembershipById, getMembershipsByBatch, markAsPaid, approveMembership, rejectMembership } from '../controllers/membership.controller.js';
+import { register, getMyMemberships, getMembershipById, getMembershipsByBatch, markAsPaid, approveMembership, rejectMembership, undoRejectMembership } from '../controllers/membership.controller.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/role.middleware.js';
 
@@ -16,5 +16,6 @@ router.get('/batch/:batchId', authorize('admin', 'batch_admin'), getMembershipsB
 router.patch('/:id/mark-paid', authorize('admin', 'batch_admin'), markAsPaid);
 router.patch('/:id/approve', authorize('admin', 'batch_admin'), approveMembership);
 router.patch('/:id/reject', authorize('admin', 'batch_admin'), rejectMembership);
+router.patch('/:id/undo-reject', authorize('admin', 'batch_admin'), undoRejectMembership);
 
 export default router;

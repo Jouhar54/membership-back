@@ -374,6 +374,41 @@ const rejectApplication = async (id, adminId, reason = '') => {
   return application;
 };
 
+const undoRejectApplication = async (id, adminId) => {
+  const application = await MembershipApplication.findById(id);
+  if (!application) {
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (application.membershipStatus !== 'rejected') {
+    const error = new Error('Only rejected applications can be restored.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  application.membershipStatus = 'pending';
+  application.rejectionReason = null;
+  application.rejectedAt = null;
+  application.rejectedBy = null;
+  await application.save();
+
+  // Restore batch member count if decremented
+  if (application.batch) {
+    await Batch.findByIdAndUpdate(application.batch, { $inc: { totalMembers: 1 } });
+  }
+
+  await ActivityLog.create({
+    user: application._id,
+    action: 'APPLICATION_REJECTION_UNDONE',
+    performedBy: adminId,
+    metadata: { applicationId: id },
+  });
+
+  return application;
+};
+
 export {
   createApplication,
   checkApplicationStatus,
@@ -383,4 +418,5 @@ export {
   markAsPaid,
   approveApplication,
   rejectApplication,
+  undoRejectApplication,
 };

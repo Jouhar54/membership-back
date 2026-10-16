@@ -110,6 +110,15 @@ const reject = async (req, res, next) => {
   }
 };
 
+const undoReject = async (req, res, next) => {
+  try {
+    const application = await applicationService.undoRejectApplication(req.params.id, req.user._id);
+    successResponse(res, 200, 'Application rejection undone successfully', { application });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getApplicationById = async (req, res, next) => {
   try {
     const application = await applicationService.getApplicationById(req.params.id);
@@ -128,4 +137,5 @@ export {
   markPaid,
   approve,
   reject,
+  undoReject,
 };

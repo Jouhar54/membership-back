@@ -79,3 +79,12 @@ export {
   approveMembership,
   rejectMembership,
  };
+
+export const undoRejectMembership = async (req, res, next) => {
+  try {
+    const membership = await membershipService.undoRejectMembership(req.params.id, req.user._id);
+    successResponse(res, 200, 'Membership rejection undone successfully', { membership });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -23,5 +23,6 @@ router.get('/applications/:batchId', authorize('admin', 'batch_admin'), applicat
 router.patch('/applications/:id/mark-paid', authorize('admin', 'batch_admin'), applicationController.markPaid);
 router.patch('/applications/:id/approve', authorize('admin', 'batch_admin'), applicationController.approve);
 router.patch('/applications/:id/reject', authorize('admin', 'batch_admin'), applicationController.reject);
+router.patch('/applications/:id/undo-reject', authorize('admin', 'batch_admin'), applicationController.undoReject);
 
 export default router;

@@ -173,6 +173,36 @@ const rejectMembership = async (id, adminId, reason = '') => {
   return membership;
 };
 
+const undoRejectMembership = async (id, adminId) => {
+  const membership = await Membership.findById(id);
+  if (!membership) {
+    const error = new Error('Membership not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (membership.membershipStatus !== 'rejected') {
+    const error = new Error('Only rejected memberships can be restored');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  membership.membershipStatus = 'pending';
+  membership.rejectionReason = null;
+  membership.rejectedAt = null;
+  membership.rejectedBy = null;
+  await membership.save();
+
+  await ActivityLog.create({
+    user: membership.user,
+    action: 'Membership rejection undone',
+    performedBy: adminId,
+    metadata: { membershipId: id },
+  });
+
+  return membership;
+};
+
 export { 
   registerMembership,
   getMyMemberships,
@@ -181,4 +211,5 @@ export {
   markAsPaid,
   approveMembership,
   rejectMembership,
+  undoRejectMembership,
  };
