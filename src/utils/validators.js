@@ -12,7 +12,13 @@ const validate = (req, res, next) => {
 const registerValidation = [
   body('fullName').notEmpty().withMessage('Full name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
-  body('phone').matches(/^[6-9]\d{9}$/).withMessage('Valid 10-digit Indian phone number is required'),
+  body('phone').custom((val) => {
+    const cleaned = (val || '').replace(/[\s\-()]/g, '');
+    if (!/^\+?[1-9]\d{6,14}$/.test(cleaned)) {
+      throw new Error('Valid phone number is required');
+    }
+    return true;
+  }),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
 ];
 

@@ -31,7 +31,8 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     post,
     pin,
     whatsapp,
-    phone,
+    phone: rawPhone,
+    phone_number,
     email,
     district,
     state,
@@ -86,6 +87,8 @@ const createApplication = async (applicationData, fileBuffer = null) => {
   }
 
   // 4. Store application
+  const phone = (rawPhone || phone_number || '').trim();
+
   const application = await MembershipApplication.create({
     fullName: (fullName || '').toUpperCase(),
     fatherName,
@@ -136,11 +139,20 @@ const createApplication = async (applicationData, fileBuffer = null) => {
 };
 
 const checkApplicationStatus = async (searchKey) => {
+  const trimmed = (searchKey || '').trim();
+  const digitsOnly = trimmed.replace(/\D/g, '');
   const query = [
-    { email: searchKey },
-    { phone: searchKey },
-    { membershipId: searchKey },
+    { email: trimmed.toLowerCase() },
+    { phone: trimmed },
+    { membershipId: trimmed },
   ];
+  if (digitsOnly.length >= 7) {
+    query.push({ phone: `+${digitsOnly}` });
+    query.push({ phone: digitsOnly });
+    if (digitsOnly.length === 10) {
+      query.push({ phone: `+91${digitsOnly}` });
+    }
+  }
   if (mongoose.Types.ObjectId.isValid(searchKey)) {
     query.push({ _id: searchKey });
   }

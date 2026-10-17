@@ -12,7 +12,24 @@ const validate = (req, res, next) => {
 const createApplicationValidation = [
   body('fullName').trim().notEmpty().withMessage('Full name is required'),
   body('email').trim().isEmail().withMessage('Valid email is required'),
-  body('phone').trim().matches(/^[6-9]\d{9}$/).withMessage('Valid 10-digit Indian phone number is required'),
+  body('phone')
+    .optional()
+    .trim(),
+  body('phone_number')
+    .optional()
+    .trim(),
+  body().custom((value, { req }) => {
+    const raw = req.body.phone || req.body.phone_number;
+    if (!raw || !String(raw).trim()) {
+      throw new Error('Phone number is required');
+    }
+    const cleaned = String(raw).replace(/[\s\-()]/g, '');
+    if (!/^\+?[1-9]\d{6,14}$/.test(cleaned)) {
+      throw new Error('Valid phone number is required');
+    }
+    req.body.phone = cleaned;
+    return true;
+  }),
   body('batchId').isMongoId().withMessage('Valid batch ID is required'),
   body('district').optional().trim(),
   body('fatherName').optional().trim(),
