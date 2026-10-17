@@ -47,6 +47,8 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     batchId,
   } = applicationData;
 
+  const phone = (rawPhone || phone_number || '').trim();
+
   let profilePhotoBuffer = null;
   let paymentScreenshotBuffer = null;
 
@@ -87,8 +89,6 @@ const createApplication = async (applicationData, fileBuffer = null) => {
   }
 
   // 4. Store application
-  const phone = (rawPhone || phone_number || '').trim();
-
   const application = await MembershipApplication.create({
     fullName: (fullName || '').toUpperCase(),
     fatherName,
