@@ -68,8 +68,47 @@ const getPosterValidation = [
   validate,
 ];
 
+
+const updateApplicationValidation = [
+  param('id').isMongoId().withMessage('Valid application ID is required'),
+  body('fullName').optional().trim().notEmpty().withMessage('Full name cannot be empty'),
+  body('email').optional().trim().isEmail().withMessage('Valid email is required'),
+  body('phone').optional().trim(),
+  body('phone_number').optional().trim(),
+  body().custom((value, { req }) => {
+    const raw = req.body.phone || req.body.phone_number;
+    if (raw) {
+      const cleaned = String(raw).replace(/[\s\-()]/g, '');
+      if (!/^\+?[1-9]\d{6,14}$/.test(cleaned)) {
+        throw new Error('Valid phone number is required');
+      }
+      req.body.phone = cleaned;
+    }
+    return true;
+  }),
+  body('batchId').optional().isMongoId().withMessage('Valid batch ID is required'),
+  body('district').optional().trim(),
+  body('fatherName').optional().trim(),
+  body('dob').optional().trim(),
+  body('bloodGroup').optional().trim(),
+  body('houseName').optional().trim(),
+  body('place').optional().trim(),
+  body('post').optional().trim(),
+  body('pin').optional().trim(),
+  body('whatsapp').optional().trim(),
+  body('state').optional().trim(),
+  body('panchayath').optional().trim(),
+  body('mandalam').optional().trim(),
+  body('thaluk').optional().trim(),
+  body('jobType').optional().trim(),
+  body('jobTypeOther').optional().trim(),
+  body('anwariCertificateNo').optional().trim(),
+  validate,
+];
+
 export {
   createApplicationValidation,
+  updateApplicationValidation,
   checkStatusValidation,
   getPosterValidation,
 };

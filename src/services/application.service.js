@@ -421,8 +421,112 @@ const undoRejectApplication = async (id, adminId) => {
   return application;
 };
 
+
+const updateApplication = async (id, updateData, fileBuffers = {}) => {
+  const application = await MembershipApplication.findById(id);
+  if (!application) {
+    const error = new Error('Application not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (application.membershipStatus === 'approved') {
+    const error = new Error('Approved applications cannot be modified. Please contact your coordinator.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 1. Validate batch if changed
+  if (updateData.batchId && String(updateData.batchId) !== String(application.batch)) {
+    const batch = await Batch.findById(updateData.batchId);
+    if (!batch) {
+      throw new Error('Batch not found');
+    }
+    if (application.membershipStatus !== 'rejected') {
+      if (application.batch) {
+        await Batch.findByIdAndUpdate(application.batch, { $inc: { totalMembers: -1 } });
+      }
+      await Batch.findByIdAndUpdate(updateData.batchId, { $inc: { totalMembers: 1 } });
+    }
+    application.batch = updateData.batchId;
+  }
+
+  // 2. Uniqueness checks for email and phone excluding self
+  const newEmail = updateData.email ? updateData.email.trim().toLowerCase() : null;
+  if (newEmail && newEmail !== application.email) {
+    const emailExists = await MembershipApplication.findOne({ email: newEmail, _id: { $ne: id } });
+    if (emailExists) {
+      throw new Error('Application with this email already exists');
+    }
+    application.email = newEmail;
+  }
+
+  const rawPhone = updateData.phone_number || updateData.phone;
+  const newPhone = rawPhone ? rawPhone.trim() : null;
+  if (newPhone && newPhone !== application.phone) {
+    const phoneExists = await MembershipApplication.findOne({ phone: newPhone, _id: { $ne: id } });
+    if (phoneExists) {
+      throw new Error('Application with this phone number already exists');
+    }
+    application.phone = newPhone;
+  }
+
+  // 3. Upload new photos to Cloudinary if provided
+  if (fileBuffers.profilePhotoBuffer) {
+    application.profilePhoto = await uploadToCloudinary(fileBuffers.profilePhotoBuffer, 'aalia_profiles');
+  }
+  if (fileBuffers.paymentScreenshotBuffer) {
+    application.paymentScreenshot = await uploadToCloudinary(fileBuffers.paymentScreenshotBuffer, 'aalia_payments');
+  }
+
+  // 4. Update allowed fields
+  if (updateData.fullName) application.fullName = updateData.fullName.toUpperCase();
+  if (updateData.fatherName !== undefined) application.fatherName = updateData.fatherName;
+  if (updateData.dob !== undefined) application.dob = updateData.dob;
+  if (updateData.bloodGroup !== undefined) application.bloodGroup = updateData.bloodGroup;
+  if (updateData.houseName !== undefined) application.houseName = updateData.houseName;
+  if (updateData.place !== undefined) application.place = updateData.place;
+  if (updateData.post !== undefined) application.post = updateData.post;
+  if (updateData.pin !== undefined) application.pin = updateData.pin;
+  if (updateData.whatsapp !== undefined) application.whatsapp = updateData.whatsapp;
+  if (updateData.district !== undefined) application.district = updateData.district;
+  if (updateData.state !== undefined) application.state = updateData.state;
+  if (updateData.panchayath !== undefined) application.panchayath = updateData.panchayath;
+  if (updateData.mandalam !== undefined) application.mandalam = updateData.mandalam;
+  if (updateData.thaluk !== undefined) application.thaluk = updateData.thaluk;
+  if (updateData.jobType !== undefined) application.jobType = updateData.jobType;
+  if (updateData.jobTypeOther !== undefined) application.jobTypeOther = updateData.jobTypeOther;
+  if (updateData.anwariCertificateNo !== undefined) application.anwariCertificateNo = updateData.anwariCertificateNo;
+
+  // 5. If application was rejected, reset back to pending
+  if (application.membershipStatus === 'rejected') {
+    application.membershipStatus = 'pending';
+    application.rejectionReason = null;
+    application.rejectedAt = null;
+    application.rejectedBy = null;
+    if (application.batch) {
+      await Batch.findByIdAndUpdate(application.batch, { $inc: { totalMembers: 1 } });
+    }
+  }
+
+  await application.save();
+
+  // Log activity
+  const admin = await User.findOne({ role: 'admin' });
+  const performedBy = admin ? admin._id : application._id;
+  await ActivityLog.create({
+    user: application._id,
+    action: 'APPLICATION_UPDATED',
+    performedBy,
+    metadata: { applicationId: id },
+  });
+
+  return await MembershipApplication.findById(id).populate('batch');
+};
+
 export {
   createApplication,
+  updateApplication,
   checkApplicationStatus,
   getApplicationById,
   getPosterById,

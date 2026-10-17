@@ -128,8 +128,52 @@ const getApplicationById = async (req, res, next) => {
   }
 };
 
+
+const updateApplication = async (req, res, next) => {
+  try {
+    let profilePhotoBuffer = null;
+    let paymentScreenshotBuffer = null;
+
+    if (req.file) {
+      if (req.file.fieldname === 'paymentScreenshot' || req.file.fieldname === 'paymentProof') {
+        paymentScreenshotBuffer = req.file.buffer;
+      } else {
+        profilePhotoBuffer = req.file.buffer;
+      }
+    } else if (Array.isArray(req.files) && req.files.length > 0) {
+      const photoFile = req.files.find(
+        (f) => f.fieldname === 'profilePhoto' || f.fieldname === 'photo' || f.fieldname === 'image'
+      );
+      if (photoFile) profilePhotoBuffer = photoFile.buffer;
+
+      const paymentFile = req.files.find(
+        (f) => f.fieldname === 'paymentScreenshot' || f.fieldname === 'paymentProof' || f.fieldname === 'receipt'
+      );
+      if (paymentFile) paymentScreenshotBuffer = paymentFile.buffer;
+    } else if (req.files) {
+      if (req.files.profilePhoto && req.files.profilePhoto[0]) {
+        profilePhotoBuffer = req.files.profilePhoto[0].buffer;
+      }
+      if (req.files.paymentScreenshot && req.files.paymentScreenshot[0]) {
+        paymentScreenshotBuffer = req.files.paymentScreenshot[0].buffer;
+      } else if (req.files.paymentProof && req.files.paymentProof[0]) {
+        paymentScreenshotBuffer = req.files.paymentProof[0].buffer;
+      }
+    }
+
+    const application = await applicationService.updateApplication(req.params.id, req.body, {
+      profilePhotoBuffer,
+      paymentScreenshotBuffer,
+    });
+    successResponse(res, 200, 'Application updated successfully', { application });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   createApplication,
+  updateApplication,
   checkStatus,
   getPoster,
   getApplicationById,
