@@ -231,22 +231,93 @@ const getApplicationsByBatch = async (batchId, filters = {}) => {
   const query = {};
   if (batchId && batchId !== 'all') {
     query.batch = batchId;
+  } else if (filters.batch && filters.batch !== 'all') {
+    query.batch = filters.batch;
+  } else if (filters.batchId && filters.batchId !== 'all') {
+    query.batch = filters.batchId;
   }
+
   if (filters.status || filters.membershipStatus) {
     query.membershipStatus = filters.status || filters.membershipStatus;
   }
   if (filters.paymentStatus) {
     query.paymentStatus = filters.paymentStatus;
   }
-  if (filters.search) {
-    const regex = new RegExp(filters.search.trim(), 'i');
+  if (filters.district) {
+    query.district = filters.district;
+  }
+  if (filters.search && filters.search.trim()) {
+    const escapedSearch = filters.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escapedSearch, 'i');
     query.$or = [
       { fullName: regex },
       { email: regex },
       { phone: regex },
+      { membershipId: regex },
     ];
   }
-  return await MembershipApplication.find(query).sort({ createdAt: -1 }).populate('batch');
+
+  const sort = {};
+  if (filters.sortBy) {
+    const order = filters.sortOrder === 'asc' || filters.sortOrder === '1' || filters.order === 'asc' ? 1 : -1;
+    sort[filters.sortBy] = order;
+  } else {
+    sort.createdAt = -1;
+  }
+
+  if (filters.paginate === 'false' || filters.all === 'true') {
+    const applications = await MembershipApplication.find(query)
+      .sort(sort)
+      .populate('batch');
+    const total = applications.length;
+
+    return {
+      applications,
+      total,
+      page: 1,
+      limit: total,
+      totalPages: total > 0 ? 1 : 0,
+      pagination: {
+        total,
+        page: 1,
+        limit: total,
+        totalPages: total > 0 ? 1 : 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
+    };
+  }
+
+  const page = Math.max(1, parseInt(filters.page, 10) || 1);
+  const limit = Math.max(1, parseInt(filters.limit, 10) || 10);
+  const skip = (page - 1) * limit;
+
+  const [applications, total] = await Promise.all([
+    MembershipApplication.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate('batch'),
+    MembershipApplication.countDocuments(query),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    applications,
+    total,
+    page,
+    limit,
+    totalPages,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  };
 };
 
 const markAsPaid = async (id, adminId) => {

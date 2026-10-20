@@ -74,8 +74,8 @@ const listBatchApplications = async (req, res, next) => {
     if (req.user && req.user.role === 'batch_admin' && req.user.batch) {
       batchId = req.user.batch.toString();
     }
-    const applications = await applicationService.getApplicationsByBatch(batchId, req.query);
-    successResponse(res, 200, 'Applications retrieved successfully', { applications });
+    const result = await applicationService.getApplicationsByBatch(batchId, req.query);
+    successResponse(res, 200, 'Applications retrieved successfully', result);
   } catch (error) {
     next(error);
   }
