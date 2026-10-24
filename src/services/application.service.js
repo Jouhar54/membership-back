@@ -51,14 +51,12 @@ const createApplication = async (applicationData, fileBuffer = null) => {
 
   let profilePhotoBuffer = null;
   let paymentScreenshotBuffer = null;
-  let signatureBuffer = null;
 
   if (fileBuffer instanceof Buffer) {
     profilePhotoBuffer = fileBuffer;
   } else if (fileBuffer && typeof fileBuffer === 'object') {
     profilePhotoBuffer = fileBuffer.profilePhotoBuffer || null;
     paymentScreenshotBuffer = fileBuffer.paymentScreenshotBuffer || null;
-    signatureBuffer = fileBuffer.signatureBuffer || null;
   }
 
   // 1. Validate batch exists
@@ -78,25 +76,11 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     throw new Error('Application with this phone number already exists');
   }
 
-  // 3. Upload profile photo to Cloudinary
-  let profilePhotoUrl = '';
-  if (profilePhotoBuffer) {
-    profilePhotoUrl = await uploadToCloudinary(profilePhotoBuffer, 'aalia_profiles');
-  }
-
-  // 3.1 Upload payment screenshot to Cloudinary
-  let paymentScreenshotUrl = '';
-  if (paymentScreenshotBuffer) {
-    paymentScreenshotUrl = await uploadToCloudinary(paymentScreenshotBuffer, 'aalia_payments');
-  }
-
-  // 3.2 Upload signature to Cloudinary if provided
-  let signatureUrl = '';
-  if (signatureBuffer) {
-    signatureUrl = await uploadToCloudinary(signatureBuffer, 'aalia_signatures');
-  } else if (applicationData.signature) {
-    signatureUrl = applicationData.signature;
-  }
+  // 3. Upload media in parallel to Cloudinary
+  const [profilePhotoUrl, paymentScreenshotUrl] = await Promise.all([
+    profilePhotoBuffer ? uploadToCloudinary(profilePhotoBuffer, 'aalia_profiles') : Promise.resolve(''),
+    paymentScreenshotBuffer ? uploadToCloudinary(paymentScreenshotBuffer, 'aalia_payments') : Promise.resolve(''),
+  ]);
 
   // 4. Store application
   const application = await MembershipApplication.create({
@@ -125,7 +109,6 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     profilePhoto: profilePhotoUrl,
     paymentScreenshot: paymentScreenshotUrl,
     paymentProof: paymentScreenshotUrl,
-    signature: signatureUrl || undefined,
     paymentStatus: 'pending',
     membershipStatus: 'pending',
   });
@@ -597,11 +580,16 @@ const updateApplication = async (id, updateData, fileBuffers = {}, user = null) 
     application.phone = newPhone;
   }
 
-  // 4. Upload / update photos, payment screenshot, signature
+  // 4. Upload / update photos, payment screenshot in parallel
   let isProfilePhotoChanged = false;
 
-  if (fileBuffers.profilePhotoBuffer) {
-    application.profilePhoto = await uploadToCloudinary(fileBuffers.profilePhotoBuffer, 'aalia_profiles');
+  const [uploadedPhotoUrl, uploadedPaymentUrl] = await Promise.all([
+    fileBuffers.profilePhotoBuffer ? uploadToCloudinary(fileBuffers.profilePhotoBuffer, 'aalia_profiles') : Promise.resolve(null),
+    fileBuffers.paymentScreenshotBuffer ? uploadToCloudinary(fileBuffers.paymentScreenshotBuffer, 'aalia_payments') : Promise.resolve(null),
+  ]);
+
+  if (uploadedPhotoUrl) {
+    application.profilePhoto = uploadedPhotoUrl;
     isProfilePhotoChanged = true;
   } else if (updateData.profilePhoto !== undefined && typeof updateData.profilePhoto === 'string' && updateData.profilePhoto.trim() !== '') {
     const trimmedPhoto = updateData.profilePhoto.trim();
@@ -611,22 +599,15 @@ const updateApplication = async (id, updateData, fileBuffers = {}, user = null) 
     }
   }
 
-  if (fileBuffers.paymentScreenshotBuffer) {
-    const paymentUrl = await uploadToCloudinary(fileBuffers.paymentScreenshotBuffer, 'aalia_payments');
-    application.paymentScreenshot = paymentUrl;
-    application.paymentProof = paymentUrl;
+  if (uploadedPaymentUrl) {
+    application.paymentScreenshot = uploadedPaymentUrl;
+    application.paymentProof = uploadedPaymentUrl;
   } else {
     const newPaymentUrl = updateData.paymentProof || updateData.paymentScreenshot;
     if (newPaymentUrl !== undefined && typeof newPaymentUrl === 'string' && newPaymentUrl.trim() !== '') {
       application.paymentScreenshot = newPaymentUrl.trim();
       application.paymentProof = newPaymentUrl.trim();
     }
-  }
-
-  if (fileBuffers.signatureBuffer) {
-    application.signature = await uploadToCloudinary(fileBuffers.signatureBuffer, 'aalia_signatures');
-  } else if (updateData.signature !== undefined && typeof updateData.signature === 'string' && updateData.signature.trim() !== '') {
-    application.signature = updateData.signature.trim();
   }
 
   // 5. Update partial text fields

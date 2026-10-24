@@ -105,7 +105,6 @@ const updateApplicationValidation = [
   body('jobTypeOther').optional().trim(),
   body('anwariCertificateNo').optional().trim(),
   body('profilePhoto').optional().trim(),
-  body('signature').optional().trim(),
   body('paymentProof').optional().trim(),
   body('paymentScreenshot').optional().trim(),
   validate,
