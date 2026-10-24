@@ -1,6 +1,7 @@
 import express from 'express';
 import * as applicationController from '../controllers/application.controller.js';
 import upload from '../middlewares/upload.middleware.js';
+import { optionalProtect } from '../middlewares/auth.middleware.js';
 import { createApplicationValidation, checkStatusValidation, getPosterValidation, updateApplicationValidation } from '../utils/application.validator.js';
 
 const router = express.Router();
@@ -13,6 +14,7 @@ router.post(
 );
 router.patch(
   '/:id',
+  optionalProtect,
   upload.any(),
   updateApplicationValidation,
   applicationController.updateApplication

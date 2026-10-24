@@ -51,12 +51,14 @@ const createApplication = async (applicationData, fileBuffer = null) => {
 
   let profilePhotoBuffer = null;
   let paymentScreenshotBuffer = null;
+  let signatureBuffer = null;
 
   if (fileBuffer instanceof Buffer) {
     profilePhotoBuffer = fileBuffer;
   } else if (fileBuffer && typeof fileBuffer === 'object') {
     profilePhotoBuffer = fileBuffer.profilePhotoBuffer || null;
     paymentScreenshotBuffer = fileBuffer.paymentScreenshotBuffer || null;
+    signatureBuffer = fileBuffer.signatureBuffer || null;
   }
 
   // 1. Validate batch exists
@@ -88,6 +90,14 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     paymentScreenshotUrl = await uploadToCloudinary(paymentScreenshotBuffer, 'aalia_payments');
   }
 
+  // 3.2 Upload signature to Cloudinary if provided
+  let signatureUrl = '';
+  if (signatureBuffer) {
+    signatureUrl = await uploadToCloudinary(signatureBuffer, 'aalia_signatures');
+  } else if (applicationData.signature) {
+    signatureUrl = applicationData.signature;
+  }
+
   // 4. Store application
   const application = await MembershipApplication.create({
     fullName: (fullName || '').toUpperCase(),
@@ -115,6 +125,7 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     profilePhoto: profilePhotoUrl,
     paymentScreenshot: paymentScreenshotUrl,
     paymentProof: paymentScreenshotUrl,
+    signature: signatureUrl || undefined,
     paymentStatus: 'pending',
     membershipStatus: 'pending',
   });
@@ -493,7 +504,7 @@ const undoRejectApplication = async (id, adminId) => {
 };
 
 
-const updateApplication = async (id, updateData, fileBuffers = {}) => {
+const updateApplication = async (id, updateData, fileBuffers = {}, user = null) => {
   const application = await MembershipApplication.findById(id);
   if (!application) {
     const error = new Error('Application not found');
@@ -501,75 +512,147 @@ const updateApplication = async (id, updateData, fileBuffers = {}) => {
     throw error;
   }
 
+  const isAdmin = Boolean(user && user.role === 'admin');
+  const isBatchAdmin = Boolean(user && user.role === 'batch_admin');
+
+  const getUserBatchId = (u) => {
+    if (!u) return null;
+    if (u.batch && u.batch._id) return u.batch._id.toString();
+    if (u.batch) return u.batch.toString();
+    if (u.batchId) return u.batchId.toString();
+    return null;
+  };
+
+  const getApplicationBatchId = (app) => {
+    if (!app) return null;
+    if (app.batch && app.batch._id) return app.batch._id.toString();
+    if (app.batch) return app.batch.toString();
+    return null;
+  };
+
+  const userBatchId = getUserBatchId(user);
+  const appBatchId = getApplicationBatchId(application);
+  const isAuthorizedBatchAdmin = isBatchAdmin && Boolean(userBatchId) && userBatchId === appBatchId;
+
+  // 1. Permission & Access Control
   if (application.membershipStatus === 'approved') {
-    const error = new Error('Approved applications cannot be modified. Please contact your coordinator.');
-    error.statusCode = 400;
+    if (!isAdmin && !isAuthorizedBatchAdmin) {
+      const error = new Error('Approved applications cannot be modified online');
+      error.statusCode = 403;
+      throw error;
+    }
+  } else if (isBatchAdmin && !isAuthorizedBatchAdmin) {
+    const error = new Error('You are not authorized to update applications outside your assigned batch');
+    error.statusCode = 403;
     throw error;
   }
 
-  // 1. Validate batch if changed
-  if (updateData.batchId && String(updateData.batchId) !== String(application.batch)) {
-    const batch = await Batch.findById(updateData.batchId);
+  // Prevent batch_admin from changing the batch ID to another batch
+  const requestedBatchId = (updateData.batchId || updateData.batch || '').toString();
+  if (isBatchAdmin && requestedBatchId && requestedBatchId !== appBatchId) {
+    const error = new Error('Batch admins cannot change the batch of an application');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // 2. Validate batch if changed (by admin or allowed non-batch_admin on pending/rejected apps)
+  const newBatchId = updateData.batchId || updateData.batch;
+  if (!isBatchAdmin && newBatchId && String(newBatchId) !== String(appBatchId)) {
+    const batch = await Batch.findById(newBatchId);
     if (!batch) {
-      throw new Error('Batch not found');
+      const error = new Error('Batch not found');
+      error.statusCode = 404;
+      throw error;
     }
     if (application.membershipStatus !== 'rejected') {
       if (application.batch) {
         await Batch.findByIdAndUpdate(application.batch, { $inc: { totalMembers: -1 } });
       }
-      await Batch.findByIdAndUpdate(updateData.batchId, { $inc: { totalMembers: 1 } });
+      await Batch.findByIdAndUpdate(newBatchId, { $inc: { totalMembers: 1 } });
     }
-    application.batch = updateData.batchId;
+    application.batch = newBatchId;
   }
 
-  // 2. Uniqueness checks for email and phone excluding self
+  // 3. Uniqueness checks for email and phone excluding self
   const newEmail = updateData.email ? updateData.email.trim().toLowerCase() : null;
   if (newEmail && newEmail !== application.email) {
     const emailExists = await MembershipApplication.findOne({ email: newEmail, _id: { $ne: id } });
     if (emailExists) {
-      throw new Error('Application with this email already exists');
+      const error = new Error('Application with this email already exists');
+      error.statusCode = 400;
+      throw error;
     }
     application.email = newEmail;
   }
 
   const rawPhone = updateData.phone_number || updateData.phone;
-  const newPhone = rawPhone ? rawPhone.trim() : null;
+  const newPhone = rawPhone ? String(rawPhone).replace(/[\s\-()]/g, '').trim() : null;
   if (newPhone && newPhone !== application.phone) {
     const phoneExists = await MembershipApplication.findOne({ phone: newPhone, _id: { $ne: id } });
     if (phoneExists) {
-      throw new Error('Application with this phone number already exists');
+      const error = new Error('Application with this phone number already exists');
+      error.statusCode = 400;
+      throw error;
     }
     application.phone = newPhone;
   }
 
-  // 3. Upload new photos to Cloudinary if provided
+  // 4. Upload / update photos, payment screenshot, signature
+  let isProfilePhotoChanged = false;
+
   if (fileBuffers.profilePhotoBuffer) {
     application.profilePhoto = await uploadToCloudinary(fileBuffers.profilePhotoBuffer, 'aalia_profiles');
+    isProfilePhotoChanged = true;
+  } else if (updateData.profilePhoto !== undefined && typeof updateData.profilePhoto === 'string' && updateData.profilePhoto.trim() !== '') {
+    const trimmedPhoto = updateData.profilePhoto.trim();
+    if (trimmedPhoto !== application.profilePhoto) {
+      application.profilePhoto = trimmedPhoto;
+      isProfilePhotoChanged = true;
+    }
   }
+
   if (fileBuffers.paymentScreenshotBuffer) {
-    application.paymentScreenshot = await uploadToCloudinary(fileBuffers.paymentScreenshotBuffer, 'aalia_payments');
+    const paymentUrl = await uploadToCloudinary(fileBuffers.paymentScreenshotBuffer, 'aalia_payments');
+    application.paymentScreenshot = paymentUrl;
+    application.paymentProof = paymentUrl;
+  } else {
+    const newPaymentUrl = updateData.paymentProof || updateData.paymentScreenshot;
+    if (newPaymentUrl !== undefined && typeof newPaymentUrl === 'string' && newPaymentUrl.trim() !== '') {
+      application.paymentScreenshot = newPaymentUrl.trim();
+      application.paymentProof = newPaymentUrl.trim();
+    }
   }
 
-  // 4. Update allowed fields
-  if (updateData.fullName) application.fullName = updateData.fullName.toUpperCase();
-  if (updateData.fatherName !== undefined) application.fatherName = updateData.fatherName;
-  if (updateData.dob !== undefined) application.dob = updateData.dob;
-  if (updateData.bloodGroup !== undefined) application.bloodGroup = updateData.bloodGroup;
-  if (updateData.houseName !== undefined) application.houseName = updateData.houseName;
-  if (updateData.place !== undefined) application.place = updateData.place;
-  if (updateData.post !== undefined) application.post = updateData.post;
-  if (updateData.pin !== undefined) application.pin = updateData.pin;
-  if (updateData.whatsapp !== undefined) application.whatsapp = updateData.whatsapp;
-  if (updateData.district !== undefined) application.district = updateData.district;
-  if (updateData.state !== undefined) application.state = updateData.state;
-  if (updateData.panchayath !== undefined) application.panchayath = updateData.panchayath;
-  if (updateData.mandalam !== undefined) application.mandalam = updateData.mandalam;
-  if (updateData.thaluk !== undefined) application.thaluk = updateData.thaluk;
-  if (updateData.jobType !== undefined) application.jobType = updateData.jobType;
-  if (updateData.jobTypeOther !== undefined) application.jobTypeOther = updateData.jobTypeOther;
-  if (updateData.anwariCertificateNo !== undefined) application.anwariCertificateNo = updateData.anwariCertificateNo;
+  if (fileBuffers.signatureBuffer) {
+    application.signature = await uploadToCloudinary(fileBuffers.signatureBuffer, 'aalia_signatures');
+  } else if (updateData.signature !== undefined && typeof updateData.signature === 'string' && updateData.signature.trim() !== '') {
+    application.signature = updateData.signature.trim();
+  }
 
-  // 5. If application was rejected, reset back to pending
+  // 5. Update partial text fields
+  const sanitize = (val) => (typeof val === 'string' ? val.trim() : val);
+
+  if (updateData.fullName !== undefined) application.fullName = String(updateData.fullName).trim().toUpperCase();
+  if (updateData.fatherName !== undefined) application.fatherName = sanitize(updateData.fatherName);
+  if (updateData.dob !== undefined) application.dob = sanitize(updateData.dob);
+  if (updateData.bloodGroup !== undefined) application.bloodGroup = sanitize(updateData.bloodGroup);
+  if (updateData.houseName !== undefined) application.houseName = sanitize(updateData.houseName);
+  if (updateData.place !== undefined) application.place = sanitize(updateData.place);
+  if (updateData.post !== undefined) application.post = sanitize(updateData.post);
+  if (updateData.pin !== undefined) application.pin = sanitize(updateData.pin);
+  if (updateData.whatsapp !== undefined) application.whatsapp = sanitize(updateData.whatsapp);
+  if (updateData.district !== undefined) application.district = sanitize(updateData.district);
+  if (updateData.state !== undefined) application.state = sanitize(updateData.state);
+  if (updateData.panchayath !== undefined) application.panchayath = sanitize(updateData.panchayath);
+  if (updateData.mandalam !== undefined) application.mandalam = sanitize(updateData.mandalam);
+  if (updateData.thaluk !== undefined) application.thaluk = sanitize(updateData.thaluk);
+  if (updateData.jobType !== undefined) application.jobType = sanitize(updateData.jobType);
+  if (updateData.jobTypeOther !== undefined) application.jobTypeOther = sanitize(updateData.jobTypeOther);
+  if (updateData.anwariCertificateNo !== undefined) application.anwariCertificateNo = sanitize(updateData.anwariCertificateNo);
+
+  // 6. Status preservation:
+  // - Only reset membershipStatus to 'pending' if previously 'rejected'
+  // - If application.membershipStatus === 'approved', DO NOT reset membershipStatus, DO NOT wipe membershipId, approvedAt, approvedBy
   if (application.membershipStatus === 'rejected') {
     application.membershipStatus = 'pending';
     application.rejectionReason = null;
@@ -582,14 +665,24 @@ const updateApplication = async (id, updateData, fileBuffers = {}) => {
 
   await application.save();
 
-  // Log activity
-  const admin = await User.findOne({ role: 'admin' });
-  const performedBy = admin ? admin._id : application._id;
+  // 7. Poster Regeneration (ONLY on Profile Photo Change for Approved Applications):
+  // Only trigger poster regeneration if application was approved AND profilePhoto changed
+  const adminUser = await User.findOne({ role: 'admin' });
+  const performedBy = user ? user._id : (adminUser ? adminUser._id : application._id);
+
+  if (application.membershipStatus === 'approved' && isProfilePhotoChanged) {
+    generateAndSendApplicationPoster(application._id, performedBy);
+  }
+
+  // 8. Log activity
   await ActivityLog.create({
     user: application._id,
     action: 'APPLICATION_UPDATED',
     performedBy,
-    metadata: { applicationId: id },
+    metadata: {
+      applicationId: id,
+      posterRegenerated: Boolean(application.membershipStatus === 'approved' && isProfilePhotoChanged),
+    },
   });
 
   return await MembershipApplication.findById(id).populate('batch');

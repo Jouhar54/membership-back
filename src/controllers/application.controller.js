@@ -5,10 +5,13 @@ const createApplication = async (req, res, next) => {
   try {
     let profilePhotoBuffer = null;
     let paymentScreenshotBuffer = null;
+    let signatureBuffer = null;
 
     if (req.file) {
-      if (req.file.fieldname === 'paymentScreenshot' || req.file.fieldname === 'paymentProof') {
+      if (req.file.fieldname === 'paymentScreenshot' || req.file.fieldname === 'paymentProof' || req.file.fieldname === 'receipt') {
         paymentScreenshotBuffer = req.file.buffer;
+      } else if (req.file.fieldname === 'signature') {
+        signatureBuffer = req.file.buffer;
       } else {
         profilePhotoBuffer = req.file.buffer;
       }
@@ -26,6 +29,11 @@ const createApplication = async (req, res, next) => {
       if (paymentFile) {
         paymentScreenshotBuffer = paymentFile.buffer;
       }
+
+      const signatureFile = req.files.find((f) => f.fieldname === 'signature');
+      if (signatureFile) {
+        signatureBuffer = signatureFile.buffer;
+      }
     } else if (req.files) {
       if (req.files.profilePhoto && req.files.profilePhoto[0]) {
         profilePhotoBuffer = req.files.profilePhoto[0].buffer;
@@ -35,11 +43,15 @@ const createApplication = async (req, res, next) => {
       } else if (req.files.paymentProof && req.files.paymentProof[0]) {
         paymentScreenshotBuffer = req.files.paymentProof[0].buffer;
       }
+      if (req.files.signature && req.files.signature[0]) {
+        signatureBuffer = req.files.signature[0].buffer;
+      }
     }
 
     const application = await applicationService.createApplication(req.body, {
       profilePhotoBuffer,
       paymentScreenshotBuffer,
+      signatureBuffer,
     });
     successResponse(res, 201, 'Application submitted successfully', { application });
   } catch (error) {
@@ -133,11 +145,14 @@ const updateApplication = async (req, res, next) => {
   try {
     let profilePhotoBuffer = null;
     let paymentScreenshotBuffer = null;
+    let signatureBuffer = null;
 
     if (req.file) {
-      if (req.file.fieldname === 'paymentScreenshot' || req.file.fieldname === 'paymentProof') {
+      if (req.file.fieldname === 'paymentScreenshot' || req.file.fieldname === 'paymentProof' || req.file.fieldname === 'receipt') {
         paymentScreenshotBuffer = req.file.buffer;
-      } else {
+      } else if (req.file.fieldname === 'signature') {
+        signatureBuffer = req.file.buffer;
+      } else if (req.file.fieldname === 'profilePhoto' || req.file.fieldname === 'photo' || req.file.fieldname === 'image') {
         profilePhotoBuffer = req.file.buffer;
       }
     } else if (Array.isArray(req.files) && req.files.length > 0) {
@@ -150,21 +165,43 @@ const updateApplication = async (req, res, next) => {
         (f) => f.fieldname === 'paymentScreenshot' || f.fieldname === 'paymentProof' || f.fieldname === 'receipt'
       );
       if (paymentFile) paymentScreenshotBuffer = paymentFile.buffer;
+
+      const signatureFile = req.files.find(
+        (f) => f.fieldname === 'signature'
+      );
+      if (signatureFile) signatureBuffer = signatureFile.buffer;
     } else if (req.files) {
       if (req.files.profilePhoto && req.files.profilePhoto[0]) {
         profilePhotoBuffer = req.files.profilePhoto[0].buffer;
+      } else if (req.files.photo && req.files.photo[0]) {
+        profilePhotoBuffer = req.files.photo[0].buffer;
+      } else if (req.files.image && req.files.image[0]) {
+        profilePhotoBuffer = req.files.image[0].buffer;
       }
+
       if (req.files.paymentScreenshot && req.files.paymentScreenshot[0]) {
         paymentScreenshotBuffer = req.files.paymentScreenshot[0].buffer;
       } else if (req.files.paymentProof && req.files.paymentProof[0]) {
         paymentScreenshotBuffer = req.files.paymentProof[0].buffer;
+      } else if (req.files.receipt && req.files.receipt[0]) {
+        paymentScreenshotBuffer = req.files.receipt[0].buffer;
+      }
+
+      if (req.files.signature && req.files.signature[0]) {
+        signatureBuffer = req.files.signature[0].buffer;
       }
     }
 
-    const application = await applicationService.updateApplication(req.params.id, req.body, {
-      profilePhotoBuffer,
-      paymentScreenshotBuffer,
-    });
+    const application = await applicationService.updateApplication(
+      req.params.id,
+      req.body,
+      {
+        profilePhotoBuffer,
+        paymentScreenshotBuffer,
+        signatureBuffer,
+      },
+      req.user
+    );
     successResponse(res, 200, 'Application updated successfully', { application });
   } catch (error) {
     next(error);

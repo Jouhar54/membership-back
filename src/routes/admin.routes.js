@@ -1,9 +1,11 @@
 import express from 'express';
 import * as adminController from '../controllers/admin.controller.js';
 import * as applicationController from '../controllers/application.controller.js';
+import upload from '../middlewares/upload.middleware.js';
 import { protect } from '../middlewares/auth.middleware.js';
 import { authorize } from '../middlewares/role.middleware.js';
 import { createBatchAdminValidation, updateBatchAdminValidation } from '../utils/admin.validator.js';
+import { updateApplicationValidation } from '../utils/application.validator.js';
 
 const router = express.Router();
 
@@ -20,6 +22,13 @@ router.delete('/batch-admins/:id', authorize('admin'), adminController.deleteBat
 // 2. Admin & Batch Admin: Application Management
 router.get('/applications/all', authorize('admin', 'batch_admin'), applicationController.listBatchApplications);
 router.get('/applications/:batchId', authorize('admin', 'batch_admin'), applicationController.listBatchApplications);
+router.patch(
+  '/applications/:id',
+  authorize('admin', 'batch_admin'),
+  upload.any(),
+  updateApplicationValidation,
+  applicationController.updateApplication
+);
 router.patch('/applications/:id/mark-paid', authorize('admin', 'batch_admin'), applicationController.markPaid);
 router.patch('/applications/:id/approve', authorize('admin', 'batch_admin'), applicationController.approve);
 router.patch('/applications/:id/reject', authorize('admin', 'batch_admin'), applicationController.reject);

@@ -107,6 +107,9 @@ const membershipApplicationSchema = new mongoose.Schema({
   paymentProof: {
     type: String, // Cloudinary URL
   },
+  signature: {
+    type: String, // Cloudinary URL
+  },
   paymentStatus: {
     type: String,
     enum: ['pending', 'paid'],

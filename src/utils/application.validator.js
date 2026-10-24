@@ -87,6 +87,7 @@ const updateApplicationValidation = [
     return true;
   }),
   body('batchId').optional().isMongoId().withMessage('Valid batch ID is required'),
+  body('batch').optional().isMongoId().withMessage('Valid batch ID is required'),
   body('district').optional().trim(),
   body('fatherName').optional().trim(),
   body('dob').optional().trim(),
@@ -103,6 +104,10 @@ const updateApplicationValidation = [
   body('jobType').optional().trim(),
   body('jobTypeOther').optional().trim(),
   body('anwariCertificateNo').optional().trim(),
+  body('profilePhoto').optional().trim(),
+  body('signature').optional().trim(),
+  body('paymentProof').optional().trim(),
+  body('paymentScreenshot').optional().trim(),
   validate,
 ];
 
