@@ -240,6 +240,24 @@ const getApplicationsByBatch = async (batchId, filters = {}) => {
   if (filters.district) {
     query.district = filters.district;
   }
+  const start = filters.startDate || filters.fromDate;
+  const end = filters.endDate || filters.toDate;
+  if (start || end) {
+    query.createdAt = {};
+    if (start) {
+      const startDate = new Date(start);
+      if (!isNaN(startDate.getTime())) {
+        query.createdAt['$gte'] = startDate;
+      }
+    }
+    if (end) {
+      const endDate = new Date(end);
+      if (!isNaN(endDate.getTime())) {
+        endDate.setHours(23, 59, 59, 999);
+        query.createdAt['$lte'] = endDate;
+      }
+    }
+  }
   if (filters.search && filters.search.trim()) {
     const escapedSearch = filters.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(escapedSearch, 'i');
