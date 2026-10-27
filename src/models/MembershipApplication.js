@@ -152,4 +152,10 @@ const membershipApplicationSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
+membershipApplicationSchema.index({ batch: 1, membershipStatus: 1 });
+membershipApplicationSchema.index({ membershipStatus: 1 });
+membershipApplicationSchema.index({ paymentStatus: 1 });
+membershipApplicationSchema.index({ district: 1 });
+membershipApplicationSchema.index({ createdAt: -1 });
+
 export default mongoose.model('MembershipApplication', membershipApplicationSchema);

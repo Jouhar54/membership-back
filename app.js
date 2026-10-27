@@ -83,7 +83,9 @@ app.use('/api/v1/batches', batchRoutes);
 app.use('/api/v1/memberships', membershipRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/admin', adminRoutes); // Alias supporting both /api/admin and /api/v1/admin
 app.use('/api/v1/applications', applicationRoutes);
+app.use('/api/applications', applicationRoutes);
 
 // Error Middleware
 import { errorHandler } from './src/middlewares/error.middleware.js';
