@@ -20,6 +20,7 @@ router.patch(
   applicationController.updateApplication
 );
 router.post('/status', checkStatusValidation, applicationController.checkStatus);
+router.get('/districts', applicationController.getDistricts);
 router.get('/poster/:id', getPosterValidation, applicationController.getPoster);
 router.get('/:id', getPosterValidation, applicationController.getApplicationById);
 

@@ -183,6 +183,16 @@ const updateApplication = async (req, res, next) => {
   }
 };
 
+
+const getDistricts = async (req, res, next) => {
+  try {
+    const districts = await applicationService.getDistinctDistricts(req.user);
+    successResponse(res, 200, 'Districts retrieved successfully', { districts });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   createApplication,
   updateApplication,
@@ -194,4 +204,5 @@ export {
   approve,
   reject,
   undoReject,
+  getDistricts,
 };

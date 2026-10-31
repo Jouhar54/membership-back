@@ -687,6 +687,28 @@ const updateApplication = async (id, updateData, fileBuffers = {}, user = null) 
   return await MembershipApplication.findById(id).populate('batch');
 };
 
+
+const getDistinctDistricts = async (user = null) => {
+  const query = {
+    district: { $exists: true, $nin: [null, ''] },
+  };
+
+  if (user && user.role === 'batch_admin' && user.batchId) {
+    query.batch = user.batchId;
+  }
+
+  const rawDistricts = await MembershipApplication.distinct('district', query);
+
+  const uniqueSet = new Set();
+  rawDistricts.forEach((d) => {
+    if (typeof d === 'string' && d.trim().length > 0) {
+      uniqueSet.add(d.trim());
+    }
+  });
+
+  return Array.from(uniqueSet).sort((a, b) => a.localeCompare(b));
+};
+
 export {
   createApplication,
   updateApplication,
@@ -698,4 +720,5 @@ export {
   approveApplication,
   rejectApplication,
   undoRejectApplication,
+  getDistinctDistricts,
 };

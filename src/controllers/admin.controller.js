@@ -56,7 +56,7 @@ const deleteBatchAdmin = async (req, res, next) => {
 const exportMembersPdf = async (req, res, next) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const filename = `iksa-members-report-${today}.pdf`;
+    const filename = `aalia-members-report-${today}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -83,7 +83,7 @@ const exportMemberDetailPdf = async (req, res, next) => {
   try {
     const memberId = req.params.id;
     const today = new Date().toISOString().split('T')[0];
-    const filename = `iksa-member-${memberId}-${today}.pdf`;
+    const filename = `aalia-member-${memberId}-${today}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

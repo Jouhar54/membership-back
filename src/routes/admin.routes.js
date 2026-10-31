@@ -26,6 +26,7 @@ router.get('/applications/export/pdf', authorize('admin', 'batch_admin'), adminC
 router.get('/applications/:id/export/pdf', authorize('admin', 'batch_admin'), adminController.exportMemberDetailPdf);
 
 // 3. Admin & Batch Admin: Application Management
+router.get('/applications/districts', authorize('admin', 'batch_admin'), applicationController.getDistricts);
 router.get('/applications/all', authorize('admin', 'batch_admin'), applicationController.listBatchApplications);
 router.get('/applications/:batchId', authorize('admin', 'batch_admin'), applicationController.listBatchApplications);
 router.patch(
