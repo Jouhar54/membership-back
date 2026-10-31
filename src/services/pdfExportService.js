@@ -352,7 +352,11 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
           // Check if page overflow
           if (currentY + rowHeight > maxContentY) {
-            doc.addPage({ margins: { top: 28, bottom: 0, left: 28, right: 28 } });
+            doc.addPage({
+              size: 'A4',
+              layout: 'landscape',
+              margins: { top: 28, bottom: 0, left: 28, right: 28 },
+            });
             drawContinuationHeader();
             currentY = drawTableHeader(40);
           }
