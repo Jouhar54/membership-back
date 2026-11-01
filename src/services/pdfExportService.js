@@ -22,6 +22,51 @@ const getLogoPath = () => {
   return null;
 };
 
+// Helper to locate Unicode Malayalam/Latin TrueType fonts
+const getFontPaths = () => {
+  const regularCandidates = [
+    path.resolve(__dirname, '../assets/fonts/Manjari-Regular.ttf'),
+    path.resolve(process.cwd(), 'src/assets/fonts/Manjari-Regular.ttf'),
+  ];
+  const boldCandidates = [
+    path.resolve(__dirname, '../assets/fonts/Manjari-Bold.ttf'),
+    path.resolve(process.cwd(), 'src/assets/fonts/Manjari-Bold.ttf'),
+  ];
+
+  let regular = null;
+  let bold = null;
+
+  for (const p of regularCandidates) {
+    if (fs.existsSync(p)) {
+      regular = p;
+      break;
+    }
+  }
+  for (const p of boldCandidates) {
+    if (fs.existsSync(p)) {
+      bold = p;
+      break;
+    }
+  }
+
+  return { regular, bold };
+};
+
+const setupFonts = (doc) => {
+  const fontPaths = getFontPaths();
+  const fontReg = fontPaths.regular ? 'Manjari' : 'Helvetica';
+  const fontBold = fontPaths.bold ? 'Manjari-Bold' : (fontPaths.regular ? 'Manjari' : 'Helvetica-Bold');
+
+  if (fontPaths.regular) {
+    doc.registerFont('Manjari', fontPaths.regular);
+  }
+  if (fontPaths.bold) {
+    doc.registerFont('Manjari-Bold', fontPaths.bold);
+  }
+
+  return { fontReg, fontBold };
+};
+
 // Formatting helpers
 const formatDate = (dateVal) => {
   if (!dateVal) return '—';
@@ -223,6 +268,9 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
       doc.pipe(stream);
 
+      // Register Unicode Malayalam & Latin TrueType fonts
+      const { fontReg, fontBold } = setupFonts(doc);
+
       // Table Column Definitions (Sum = 785 pt)
       const columns = [
         { id: 'sl', label: '#', width: 24, align: 'center' },
@@ -252,13 +300,13 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
         }
 
         // Organization & Campaign title
-        doc.font('Helvetica-Bold').fontSize(12).fillColor('#0f172a');
+        doc.font(fontBold).fontSize(12).fillColor('#0f172a');
         doc.text('AALIA & ANVARIYYA ALUMNI ASSOCIATION', titleStartX, 28, { lineBreak: false });
 
-        doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#2563eb');
+        doc.font(fontBold).fontSize(9.5).fillColor('#2563eb');
         doc.text('AALIA MEMBERSHIP CAMPAIGN 2026', titleStartX, 44, { lineBreak: false });
 
-        doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#475569');
+        doc.font(fontBold).fontSize(8.5).fillColor('#475569');
         doc.text('OFFICIAL MEMBERSHIP APPLICATIONS REPORT', titleStartX, 58, { lineBreak: false });
 
         // Meta Box right-aligned
@@ -266,7 +314,7 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
         const metaBoxY = 28;
         const metaBoxWidth = contentWidth - (metaBoxX - marginLeft);
 
-        doc.font('Helvetica').fontSize(7.5).fillColor('#64748b');
+        doc.font(fontReg).fontSize(7.5).fillColor('#64748b');
         doc.text(`Generated: ${formatDateTime(new Date())}`, metaBoxX, metaBoxY, { width: metaBoxWidth, align: 'right', lineBreak: false });
 
         // Filter summary line
@@ -284,7 +332,7 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
         // Total records pill
         const countText = `Total Records: ${totalCount}`;
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
+        doc.font(fontBold).fontSize(8).fillColor('#0f172a');
         doc.text(countText, metaBoxX, metaBoxY + 27, { width: metaBoxWidth, align: 'right', lineBreak: false });
 
         // Decorative separator bar
@@ -293,9 +341,9 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
       // Helper to draw continuation header on subsequent pages
       const drawContinuationHeader = () => {
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b');
+        doc.font(fontBold).fontSize(8).fillColor('#64748b');
         doc.text('AALIA Membership Campaign 2026 — Members Report (Continued)', marginLeft, 24, { lineBreak: false });
-        doc.font('Helvetica').fontSize(7).fillColor('#94a3b8');
+        doc.font(fontReg).fontSize(7).fillColor('#94a3b8');
         doc.text(`Batch: ${batchNameLabel} • Total Records: ${totalCount}`, marginLeft + 350, 24, { width: contentWidth - 350, align: 'right', lineBreak: false });
         doc.rect(marginLeft, 34, contentWidth, 0.75).fill('#e2e8f0');
       };
@@ -309,7 +357,7 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
         // Column titles
         let currX = marginLeft;
-        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#ffffff');
+        doc.font(fontBold).fontSize(7.5).fillColor('#ffffff');
 
         for (const col of columns) {
           doc.text(col.label, currX + 3, startY + 5.5, {
@@ -332,9 +380,9 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
       if (totalCount === 0) {
         currentY += 15;
         doc.rect(marginLeft, currentY, contentWidth, 60).fill('#f8fafc').strokeColor('#cbd5e1').stroke();
-        doc.font('Helvetica-Bold').fontSize(10).fillColor('#475569');
+        doc.font(fontBold).fontSize(10).fillColor('#475569');
         doc.text('No Membership Applications Found', marginLeft, currentY + 18, { width: contentWidth, align: 'center', lineBreak: false });
-        doc.font('Helvetica').fontSize(8).fillColor('#94a3b8');
+        doc.font(fontReg).fontSize(8).fillColor('#94a3b8');
         doc.text('There are no member records matching your specified filter criteria.', marginLeft, currentY + 33, { width: contentWidth, align: 'center', lineBreak: false });
       } else {
         // Stream records from MongoDB cursor with optimized batchSize
@@ -371,40 +419,40 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
           let colX = marginLeft;
 
           // 1. Sl No
-          doc.font('Helvetica').fontSize(7).fillColor('#64748b');
+          doc.font(fontReg).fontSize(7).fillColor('#64748b');
           doc.text(String(rowIndex), colX + 2, currentY + 5, { width: columns[0].width - 4, align: 'center', lineBreak: false });
           colX += columns[0].width;
 
           // 2. Membership ID
           const memId = docRecord.membershipId || '—';
-          doc.font(docRecord.membershipId ? 'Helvetica-Bold' : 'Helvetica').fontSize(7).fillColor(docRecord.membershipId ? '#15803d' : '#94a3b8');
+          doc.font(docRecord.membershipId ? fontBold : fontReg).fontSize(7).fillColor(docRecord.membershipId ? '#15803d' : '#94a3b8');
           doc.text(memId, colX + 2, currentY + 5, { width: columns[1].width - 4, align: 'center', lineBreak: false, ellipsis: true });
           colX += columns[1].width;
 
           // 3. Full Name
-          doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0f172a');
+          doc.font(fontBold).fontSize(7.5).fillColor('#0f172a');
           doc.text(docRecord.fullName || '—', colX + 4, currentY + 5, { width: columns[2].width - 8, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[2].width;
 
           // 4. Phone
-          doc.font('Helvetica').fontSize(7).fillColor('#334155');
+          doc.font(fontReg).fontSize(7).fillColor('#334155');
           doc.text(formatPhone(docRecord.phone), colX + 3, currentY + 5, { width: columns[3].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[3].width;
 
           // 5. Email
-          doc.font('Helvetica').fontSize(7).fillColor('#334155');
+          doc.font(fontReg).fontSize(7).fillColor('#334155');
           doc.text(docRecord.email || '—', colX + 3, currentY + 5, { width: columns[4].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[4].width;
 
           // 6. District
-          doc.font('Helvetica').fontSize(7).fillColor('#334155');
+          doc.font(fontReg).fontSize(7).fillColor('#334155');
           doc.text(docRecord.district || '—', colX + 3, currentY + 5, { width: columns[5].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[5].width;
 
           // 7. Batch (O(1) resolution from batchMap)
           const bId = docRecord.batch?._id ? docRecord.batch._id.toString() : (docRecord.batch ? docRecord.batch.toString() : null);
           const batchTitle = (bId && batchMap.get(bId)) || docRecord.batch?.batchName || '—';
-          doc.font('Helvetica').fontSize(7).fillColor('#334155');
+          doc.font(fontReg).fontSize(7).fillColor('#334155');
           doc.text(batchTitle, colX + 3, currentY + 5, { width: columns[6].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[6].width;
 
@@ -416,7 +464,7 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
           const badgeW = columns[7].width - 12;
           const badgeX = colX + 6;
           doc.roundedRect(badgeX, currentY + 3.5, badgeW, 12, 3).fill(payBg);
-          doc.font('Helvetica-Bold').fontSize(6).fillColor(payText);
+          doc.font(fontBold).fontSize(6).fillColor(payText);
           doc.text(payLabel, badgeX, currentY + 5.5, { width: badgeW, align: 'center', lineBreak: false });
           colX += columns[7].width;
 
@@ -437,13 +485,13 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
           const sBadgeW = columns[8].width - 12;
           const sBadgeX = colX + 6;
           doc.roundedRect(sBadgeX, currentY + 3.5, sBadgeW, 12, 3).fill(statusBg);
-          doc.font('Helvetica-Bold').fontSize(6).fillColor(statusText);
+          doc.font(fontBold).fontSize(6).fillColor(statusText);
           doc.text(statusLabel, sBadgeX, currentY + 5.5, { width: sBadgeW, align: 'center', lineBreak: false });
           colX += columns[8].width;
 
           // 10. Approval Date
           const appDate = docRecord.approvedAt ? formatDate(docRecord.approvedAt) : '—';
-          doc.font('Helvetica').fontSize(6.5).fillColor('#64748b');
+          doc.font(fontReg).fontSize(6.5).fillColor('#64748b');
           doc.text(appDate, colX + 2, currentY + 5.5, { width: columns[9].width - 4, align: 'center', lineBreak: false });
 
           currentY += rowHeight;
@@ -460,11 +508,11 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
         doc.rect(marginLeft, pageHeight - marginBottom, contentWidth, 0.75).fill('#cbd5e1');
 
         // Footer text
-        doc.font('Helvetica').fontSize(7).fillColor('#64748b');
+        doc.font(fontReg).fontSize(7).fillColor('#64748b');
         doc.text('AALIA Membership Campaign 2026 • Confidential Administrative Document', marginLeft, pageHeight - marginBottom + 6, { lineBreak: false });
 
         const pageNumText = `Page ${i + 1} of ${range.count}`;
-        doc.font('Helvetica-Bold').fontSize(7).fillColor('#475569');
+        doc.font(fontBold).fontSize(7).fillColor('#475569');
         doc.text(pageNumText, marginLeft + contentWidth - 100, pageHeight - marginBottom + 6, { width: 100, align: 'right', lineBreak: false });
       }
 
@@ -524,6 +572,9 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
 
       doc.pipe(stream);
 
+      // Register Unicode Malayalam & Latin TrueType fonts
+      const { fontReg, fontBold } = setupFonts(doc);
+
       const pageWidth = 595.28;
       const pageHeight = 841.89;
       const marginLeft = 36;
@@ -551,13 +602,13 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
       }
 
       // Header Typography
-      doc.font('Helvetica-Bold').fontSize(11).fillColor('#ffffff');
+      doc.font(fontBold).fontSize(11).fillColor('#ffffff');
       doc.text('AALIA & ANVARIYYA ALUMNI ASSOCIATION', headerTextX, 41, { lineBreak: false });
 
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#60a5fa');
+      doc.font(fontBold).fontSize(9).fillColor('#60a5fa');
       doc.text('AALIA MEMBERSHIP CAMPAIGN 2026', headerTextX, 56, { lineBreak: false });
 
-      doc.font('Helvetica').fontSize(7.5).fillColor('#cbd5e1');
+      doc.font(fontReg).fontSize(7.5).fillColor('#cbd5e1');
       doc.text('OFFICIAL MEMBERSHIP RECORD DOSSIER', headerTextX, 69, { lineBreak: false });
 
       // 2. Profile Identification Card (Y: 106)
@@ -581,10 +632,10 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
           });
           doc.rect(photoX, photoY, photoW, photoH).strokeColor('#cbd5e1').stroke();
         } catch {
-          drawAvatarFallback(doc, member.fullName, photoX, photoY, photoW, photoH);
+          drawAvatarFallback(doc, member.fullName, photoX, photoY, photoW, photoH, fontBold);
         }
       } else {
-        drawAvatarFallback(doc, member.fullName, photoX, photoY, photoW, photoH);
+        drawAvatarFallback(doc, member.fullName, photoX, photoY, photoW, photoH, fontBold);
       }
 
       // Member Identity Block (next to photo)
@@ -592,12 +643,12 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
       const infoW = contentWidth - (infoX - marginLeft) - 12;
 
       // Name
-      doc.font('Helvetica-Bold').fontSize(14).fillColor('#0f172a');
+      doc.font(fontBold).fontSize(14).fillColor('#0f172a');
       doc.text(member.fullName || '—', infoX, photoY + 2, { width: infoW, lineBreak: false, ellipsis: true });
 
       // Batch
       const batchName = member.batch?.batchName || 'Unassigned Batch';
-      doc.font('Helvetica').fontSize(9).fillColor('#475569');
+      doc.font(fontReg).fontSize(9).fillColor('#475569');
       doc.text(`Batch: ${batchName}`, infoX, photoY + 20, { lineBreak: false });
 
       // Badges row (Membership ID + Membership Status + Payment Status)
@@ -609,7 +660,7 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
       const idBg = hasId ? '#dcfce7' : '#f1f5f9';
       const idColor = hasId ? '#15803d' : '#64748b';
       doc.roundedRect(infoX, badgeY, 130, 16, 4).fill(idBg);
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(idColor);
+      doc.font(fontBold).fontSize(7.5).fillColor(idColor);
       doc.text(idLabel, infoX, badgeY + 4, { width: 130, align: 'center', lineBreak: false });
 
       // Membership Status Pill
@@ -627,7 +678,7 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
         mText = 'STATUS: REJECTED';
       }
       doc.roundedRect(infoX + 138, badgeY, 105, 16, 4).fill(mBg);
-      doc.font('Helvetica-Bold').fontSize(7).fillColor(mColor);
+      doc.font(fontBold).fontSize(7).fillColor(mColor);
       doc.text(mText, infoX + 138, badgeY + 4.5, { width: 105, align: 'center', lineBreak: false });
 
       // Payment Status Pill
@@ -636,11 +687,11 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
       const pColor = isPaid ? '#15803d' : '#92400e';
       const pText = isPaid ? 'PAYMENT: PAID' : 'PAYMENT: PENDING';
       doc.roundedRect(infoX + 250, badgeY, 105, 16, 4).fill(pBg);
-      doc.font('Helvetica-Bold').fontSize(7).fillColor(pColor);
+      doc.font(fontBold).fontSize(7).fillColor(pColor);
       doc.text(pText, infoX + 250, badgeY + 4.5, { width: 105, align: 'center', lineBreak: false });
 
       // Registration & Approval timestamps
-      doc.font('Helvetica').fontSize(7.5).fillColor('#64748b');
+      doc.font(fontReg).fontSize(7.5).fillColor('#64748b');
       const regDate = `Registered: ${formatDateTime(member.createdAt)}`;
       const appDate = member.approvedAt ? `Approved: ${formatDateTime(member.approvedAt)}` : null;
       const timeStr = appDate ? `${regDate}  |  ${appDate}` : regDate;
@@ -650,9 +701,9 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
       let currentCardY = profileCardY + profileCardH + 12;
       if (member.membershipStatus === 'rejected') {
         doc.roundedRect(marginLeft, currentCardY, contentWidth, 32, 4).fill('#fee2e2').strokeColor('#fca5a5').stroke();
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#991b1b');
+        doc.font(fontBold).fontSize(8).fillColor('#991b1b');
         doc.text('APPLICATION REJECTED', marginLeft + 10, currentCardY + 6, { lineBreak: false });
-        doc.font('Helvetica').fontSize(7.5).fillColor('#7f1d1d');
+        doc.font(fontReg).fontSize(7.5).fillColor('#7f1d1d');
         const rejReason = member.rejectionReason || 'No specific reason recorded.';
         const rejDate = member.rejectedAt ? ` (on ${formatDate(member.rejectedAt)})` : '';
         doc.text(`Reason: ${rejReason}${rejDate}`, marginLeft + 10, currentCardY + 18, { width: contentWidth - 20, lineBreak: false, ellipsis: true });
@@ -669,7 +720,7 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
         doc.rect(marginLeft, startY + 15, contentWidth, 5).fill('#f1f5f9');
         doc.rect(marginLeft, startY + 20, contentWidth, 0.5).fill('#e2e8f0');
 
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e293b');
+        doc.font(fontBold).fontSize(8).fillColor('#1e293b');
         doc.text(title.toUpperCase(), marginLeft + 10, startY + 5.5, { lineBreak: false });
 
         // Render Fields in 2 columns
@@ -685,17 +736,17 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
 
           // Field 1
           if (f1) {
-            doc.font('Helvetica').fontSize(7).fillColor('#64748b');
+            doc.font(fontReg).fontSize(7).fillColor('#64748b');
             doc.text(f1.label, col1X, fieldY, { lineBreak: false });
-            doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
+            doc.font(fontBold).fontSize(8).fillColor('#0f172a');
             doc.text(String(f1.value || '—'), col1X, fieldY + 9, { width: colWidth, lineBreak: false, ellipsis: true });
           }
 
           // Field 2
           if (f2) {
-            doc.font('Helvetica').fontSize(7).fillColor('#64748b');
+            doc.font(fontReg).fontSize(7).fillColor('#64748b');
             doc.text(f2.label, col2X, fieldY, { lineBreak: false });
-            doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
+            doc.font(fontBold).fontSize(8).fillColor('#0f172a');
             doc.text(String(f2.value || '—'), col2X, fieldY + 9, { width: colWidth, lineBreak: false, ellipsis: true });
           }
 
@@ -766,11 +817,11 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
 
       // Section 5: Declaration & Signature
       doc.roundedRect(marginLeft, currentCardY, contentWidth, 54, 5).fill('#f8fafc').strokeColor('#e2e8f0').stroke();
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#1e293b');
+      doc.font(fontBold).fontSize(7.5).fillColor('#1e293b');
       doc.text('APPLICANT DECLARATION', marginLeft + 10, currentCardY + 6, { lineBreak: false });
-      doc.font('Helvetica-Oblique').fontSize(7).fillColor('#475569');
+      doc.font(fontReg).fontSize(7).fillColor('#475569');
       doc.text('"I accept and agree to be bound by the bylaw of AALIA and Anvariyya."', marginLeft + 10, currentCardY + 18, { lineBreak: false });
-      doc.font('Helvetica').fontSize(7).fillColor('#64748b');
+      doc.font(fontReg).fontSize(7).fillColor('#64748b');
       const declDate = member.declarationDate ? formatDate(member.declarationDate) : formatDate(member.createdAt);
       doc.text(`Accepted: Yes  |  Declaration Date: ${declDate}`, marginLeft + 10, currentCardY + 34, { lineBreak: false });
 
@@ -782,10 +833,10 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
 
         doc.rect(marginLeft, pageHeight - 34, contentWidth, 0.75).fill('#cbd5e1');
 
-        doc.font('Helvetica').fontSize(7).fillColor('#64748b');
+        doc.font(fontReg).fontSize(7).fillColor('#64748b');
         doc.text(`AALIA Membership Campaign 2026 • Confidential Member Dossier • Generated: ${formatDateTime(new Date())}`, marginLeft, pageHeight - 27, { lineBreak: false });
 
-        doc.font('Helvetica-Bold').fontSize(7).fillColor('#475569');
+        doc.font(fontBold).fontSize(7).fillColor('#475569');
         doc.text(`Page ${i + 1} of ${range.count}`, marginLeft + contentWidth - 100, pageHeight - 27, { width: 100, align: 'right', lineBreak: false });
       }
 
@@ -796,9 +847,9 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
   });
 };
 
-const drawAvatarFallback = (doc, name, x, y, w, h) => {
+const drawAvatarFallback = (doc, name, x, y, w, h, fontBold = 'Helvetica-Bold') => {
   doc.rect(x, y, w, h).fill('#e2e8f0').strokeColor('#cbd5e1').stroke();
-  doc.font('Helvetica-Bold').fontSize(22).fillColor('#475569');
+  doc.font(fontBold).fontSize(22).fillColor('#475569');
   const initials = (name || 'M')
     .split(' ')
     .filter(Boolean)
