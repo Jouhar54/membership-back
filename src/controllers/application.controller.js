@@ -193,6 +193,15 @@ const getDistricts = async (req, res, next) => {
   }
 };
 
+const getLocations = async (req, res, next) => {
+  try {
+    const locations = await applicationService.getDistinctLocations(req.user, req.query.district);
+    successResponse(res, 200, 'Locations retrieved successfully', locations);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   createApplication,
   updateApplication,
@@ -205,4 +214,5 @@ export {
   reject,
   undoReject,
   getDistricts,
+  getLocations,
 };

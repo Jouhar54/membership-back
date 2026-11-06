@@ -156,6 +156,9 @@ membershipApplicationSchema.index({ batch: 1, membershipStatus: 1 });
 membershipApplicationSchema.index({ membershipStatus: 1 });
 membershipApplicationSchema.index({ paymentStatus: 1 });
 membershipApplicationSchema.index({ district: 1 });
+membershipApplicationSchema.index({ panchayath: 1 });
+membershipApplicationSchema.index({ mandalam: 1 });
+membershipApplicationSchema.index({ thaluk: 1 });
 membershipApplicationSchema.index({ createdAt: -1 });
 
 export default mongoose.model('MembershipApplication', membershipApplicationSchema);

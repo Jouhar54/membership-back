@@ -237,8 +237,19 @@ const getApplicationsByBatch = async (batchId, filters = {}) => {
   if (filters.paymentStatus) {
     query.paymentStatus = filters.paymentStatus;
   }
-  if (filters.district) {
+  if (filters.district && filters.district !== 'all') {
     query.district = filters.district;
+  }
+  if (filters.panchayath && filters.panchayath !== 'all') {
+    query.panchayath = filters.panchayath;
+  }
+  if (filters.mandalam && filters.mandalam !== 'all') {
+    query.mandalam = filters.mandalam;
+  }
+  if (filters.taluk && filters.taluk !== 'all') {
+    query.thaluk = filters.taluk;
+  } else if (filters.thaluk && filters.thaluk !== 'all') {
+    query.thaluk = filters.thaluk;
   }
   const start = filters.startDate || filters.fromDate;
   const end = filters.endDate || filters.toDate;
@@ -688,6 +699,40 @@ const updateApplication = async (id, updateData, fileBuffers = {}, user = null) 
 };
 
 
+const getDistinctLocations = async (user = null, district = null) => {
+  const query = {};
+  if (user && user.role === 'batch_admin' && user.batchId) {
+    query.batch = user.batchId;
+  }
+  if (district && district !== 'all') {
+    query.district = district;
+  }
+
+  const [districts, panchayaths, mandalams, thaluks] = await Promise.all([
+    MembershipApplication.distinct('district', user?.role === 'batch_admin' && user?.batchId ? { batch: user.batchId } : {}),
+    MembershipApplication.distinct('panchayath', { ...query, panchayath: { $exists: true, $nin: [null, ''] } }),
+    MembershipApplication.distinct('mandalam', { ...query, mandalam: { $exists: true, $nin: [null, ''] } }),
+    MembershipApplication.distinct('thaluk', { ...query, thaluk: { $exists: true, $nin: [null, ''] } }),
+  ]);
+
+  const cleanSort = (arr) => {
+    const set = new Set();
+    arr.forEach((item) => {
+      if (typeof item === 'string' && item.trim().length > 0) {
+        set.add(item.trim());
+      }
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  };
+
+  return {
+    districts: cleanSort(districts),
+    panchayaths: cleanSort(panchayaths),
+    mandalams: cleanSort(mandalams),
+    taluks: cleanSort(thaluks),
+  };
+};
+
 const getDistinctDistricts = async (user = null) => {
   const query = {
     district: { $exists: true, $nin: [null, ''] },
@@ -721,4 +766,5 @@ export {
   rejectApplication,
   undoRejectApplication,
   getDistinctDistricts,
+  getDistinctLocations,
 };

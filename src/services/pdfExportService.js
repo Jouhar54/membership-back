@@ -164,6 +164,23 @@ export const buildExportQuery = async (user, filters = {}) => {
     query.district = filters.district;
   }
 
+  // Panchayath filter
+  if (filters.panchayath && filters.panchayath !== 'all') {
+    query.panchayath = filters.panchayath;
+  }
+
+  // Mandalam filter
+  if (filters.mandalam && filters.mandalam !== 'all') {
+    query.mandalam = filters.mandalam;
+  }
+
+  // Taluk filter
+  if (filters.taluk && filters.taluk !== 'all') {
+    query.thaluk = filters.taluk;
+  } else if (filters.thaluk && filters.thaluk !== 'all') {
+    query.thaluk = filters.thaluk;
+  }
+
   // Date range filter
   const start = filters.startDate || filters.fromDate;
   const end = filters.endDate || filters.toDate;
@@ -321,6 +338,9 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
         const filterParts = [];
         filterParts.push(`Batch: ${batchNameLabel}`);
         if (query.district) filterParts.push(`District: ${query.district}`);
+        if (query.thaluk) filterParts.push(`Taluk: ${query.thaluk}`);
+        if (query.mandalam) filterParts.push(`Mandalam: ${query.mandalam}`);
+        if (query.panchayath) filterParts.push(`Panchayath: ${query.panchayath}`);
         if (query.membershipStatus) filterParts.push(`Status: ${query.membershipStatus.toUpperCase()}`);
         if (query.paymentStatus) filterParts.push(`Payment: ${query.paymentStatus.toUpperCase()}`);
         if (filters.search) filterParts.push(`Search: "${filters.search}"`);

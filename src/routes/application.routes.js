@@ -21,6 +21,7 @@ router.patch(
 );
 router.post('/status', checkStatusValidation, applicationController.checkStatus);
 router.get('/districts', applicationController.getDistricts);
+router.get('/locations', applicationController.getLocations);
 router.get('/poster/:id', getPosterValidation, applicationController.getPoster);
 router.get('/:id', getPosterValidation, applicationController.getApplicationById);
 
