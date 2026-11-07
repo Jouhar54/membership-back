@@ -6,6 +6,7 @@ import ActivityLog from '../models/ActivityLog.js';
 import cloudinary from '../config/cloudinary.js';
 import { generatePoster } from './poster.service.js';
 import { generateMembershipId } from '../utils/generateMembershipId.js';
+import { buildBilingualLocationQuery } from '../constants/keralaLocations.js';
 
 const uploadToCloudinary = (fileBuffer, folder) => {
   return new Promise((resolve, reject) => {
@@ -18,6 +19,52 @@ const uploadToCloudinary = (fileBuffer, folder) => {
     );
     uploadStream.end(fileBuffer);
   });
+};
+
+const escapeRegex = (string) => {
+  return typeof string === 'string' ? string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+};
+
+const makeCaseInsensitiveExactRegex = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return new RegExp(`^${escapeRegex(str.trim())}$`, 'i');
+};
+
+const toTitleCase = (str) => {
+  if (!str || typeof str !== 'string') return '';
+  const trimmed = str.trim();
+  // Capitalize English/Latin words; leave non-Latin (e.g. Malayalam) untouched
+  if (/[a-zA-Z]/.test(trimmed)) {
+    return trimmed
+      .toLowerCase()
+      .split(/\s+/)
+      .map((word) => {
+        if (!word) return '';
+        if (word.includes('-')) {
+          return word
+            .split('-')
+            .map((sub) => sub.charAt(0).toUpperCase() + sub.slice(1))
+            .join('-');
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+  }
+  return trimmed;
+};
+
+const cleanSort = (arr) => {
+  const map = new Map();
+  arr.forEach((item) => {
+    if (typeof item === 'string' && item.trim().length > 0) {
+      const trimmed = item.trim();
+      const key = trimmed.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, toTitleCase(trimmed));
+      }
+    }
+  });
+  return Array.from(map.values()).sort((a, b) => a.localeCompare(b));
 };
 
 const createApplication = async (applicationData, fileBuffer = null) => {
@@ -95,11 +142,11 @@ const createApplication = async (applicationData, fileBuffer = null) => {
     whatsapp,
     phone,
     email,
-    district,
+    district: toTitleCase(district),
     state: state || 'Kerala',
-    panchayath,
-    mandalam,
-    thaluk,
+    panchayath: toTitleCase(panchayath),
+    mandalam: toTitleCase(mandalam),
+    thaluk: toTitleCase(thaluk),
     jobType,
     jobTypeOther,
     anwariCertificateNo: anwariCertificateNo || '',
@@ -238,18 +285,18 @@ const getApplicationsByBatch = async (batchId, filters = {}) => {
     query.paymentStatus = filters.paymentStatus;
   }
   if (filters.district && filters.district !== 'all') {
-    query.district = filters.district;
+    query.district = buildBilingualLocationQuery('district', filters.district);
   }
   if (filters.panchayath && filters.panchayath !== 'all') {
-    query.panchayath = filters.panchayath;
+    query.panchayath = makeCaseInsensitiveExactRegex(filters.panchayath);
   }
   if (filters.mandalam && filters.mandalam !== 'all') {
-    query.mandalam = filters.mandalam;
+    query.mandalam = makeCaseInsensitiveExactRegex(filters.mandalam);
   }
   if (filters.taluk && filters.taluk !== 'all') {
-    query.thaluk = filters.taluk;
+    query.thaluk = buildBilingualLocationQuery('taluk', filters.taluk);
   } else if (filters.thaluk && filters.thaluk !== 'all') {
-    query.thaluk = filters.thaluk;
+    query.thaluk = buildBilingualLocationQuery('taluk', filters.thaluk);
   }
   const start = filters.startDate || filters.fromDate;
   const end = filters.endDate || filters.toDate;
@@ -651,11 +698,11 @@ const updateApplication = async (id, updateData, fileBuffers = {}, user = null) 
   if (updateData.post !== undefined) application.post = sanitize(updateData.post);
   if (updateData.pin !== undefined) application.pin = sanitize(updateData.pin);
   if (updateData.whatsapp !== undefined) application.whatsapp = sanitize(updateData.whatsapp);
-  if (updateData.district !== undefined) application.district = sanitize(updateData.district);
+  if (updateData.district !== undefined) application.district = toTitleCase(updateData.district);
   if (updateData.state !== undefined) application.state = sanitize(updateData.state);
-  if (updateData.panchayath !== undefined) application.panchayath = sanitize(updateData.panchayath);
-  if (updateData.mandalam !== undefined) application.mandalam = sanitize(updateData.mandalam);
-  if (updateData.thaluk !== undefined) application.thaluk = sanitize(updateData.thaluk);
+  if (updateData.panchayath !== undefined) application.panchayath = toTitleCase(updateData.panchayath);
+  if (updateData.mandalam !== undefined) application.mandalam = toTitleCase(updateData.mandalam);
+  if (updateData.thaluk !== undefined) application.thaluk = toTitleCase(updateData.thaluk);
   if (updateData.jobType !== undefined) application.jobType = sanitize(updateData.jobType);
   if (updateData.jobTypeOther !== undefined) application.jobTypeOther = sanitize(updateData.jobTypeOther);
   if (updateData.anwariCertificateNo !== undefined) application.anwariCertificateNo = sanitize(updateData.anwariCertificateNo);
@@ -705,7 +752,7 @@ const getDistinctLocations = async (user = null, district = null) => {
     query.batch = user.batchId;
   }
   if (district && district !== 'all') {
-    query.district = district;
+    query.district = buildBilingualLocationQuery('district', district);
   }
 
   const [districts, panchayaths, mandalams, thaluks] = await Promise.all([
@@ -714,16 +761,6 @@ const getDistinctLocations = async (user = null, district = null) => {
     MembershipApplication.distinct('mandalam', { ...query, mandalam: { $exists: true, $nin: [null, ''] } }),
     MembershipApplication.distinct('thaluk', { ...query, thaluk: { $exists: true, $nin: [null, ''] } }),
   ]);
-
-  const cleanSort = (arr) => {
-    const set = new Set();
-    arr.forEach((item) => {
-      if (typeof item === 'string' && item.trim().length > 0) {
-        set.add(item.trim());
-      }
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  };
 
   return {
     districts: cleanSort(districts),
@@ -743,15 +780,7 @@ const getDistinctDistricts = async (user = null) => {
   }
 
   const rawDistricts = await MembershipApplication.distinct('district', query);
-
-  const uniqueSet = new Set();
-  rawDistricts.forEach((d) => {
-    if (typeof d === 'string' && d.trim().length > 0) {
-      uniqueSet.add(d.trim());
-    }
-  });
-
-  return Array.from(uniqueSet).sort((a, b) => a.localeCompare(b));
+  return cleanSort(rawDistricts);
 };
 
 export {

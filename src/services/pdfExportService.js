@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import MembershipApplication from '../models/MembershipApplication.js';
 import Batch from '../models/Batch.js';
+import { buildBilingualLocationQuery } from '../constants/keralaLocations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -68,6 +69,15 @@ const setupFonts = (doc) => {
 };
 
 // Formatting helpers
+const escapeRegex = (string) => {
+  return typeof string === 'string' ? string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+};
+
+const makeCaseInsensitiveExactRegex = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return new RegExp(`^${escapeRegex(str.trim())}$`, 'i');
+};
+
 const formatDate = (dateVal) => {
   if (!dateVal) return '—';
   try {
@@ -161,24 +171,24 @@ export const buildExportQuery = async (user, filters = {}) => {
 
   // District filter
   if (filters.district && filters.district !== 'all') {
-    query.district = filters.district;
+    query.district = buildBilingualLocationQuery('district', filters.district);
   }
 
   // Panchayath filter
   if (filters.panchayath && filters.panchayath !== 'all') {
-    query.panchayath = filters.panchayath;
+    query.panchayath = makeCaseInsensitiveExactRegex(filters.panchayath);
   }
 
   // Mandalam filter
   if (filters.mandalam && filters.mandalam !== 'all') {
-    query.mandalam = filters.mandalam;
+    query.mandalam = makeCaseInsensitiveExactRegex(filters.mandalam);
   }
 
   // Taluk filter
   if (filters.taluk && filters.taluk !== 'all') {
-    query.thaluk = filters.taluk;
+    query.thaluk = buildBilingualLocationQuery('taluk', filters.taluk);
   } else if (filters.thaluk && filters.thaluk !== 'all') {
-    query.thaluk = filters.thaluk;
+    query.thaluk = buildBilingualLocationQuery('taluk', filters.thaluk);
   }
 
   // Date range filter
@@ -290,16 +300,14 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
       // Table Column Definitions (Sum = 785 pt)
       const columns = [
-        { id: 'sl', label: '#', width: 24, align: 'center' },
-        { id: 'id', label: 'Membership ID', width: 72, align: 'center' },
-        { id: 'name', label: 'Full Name', width: 125, align: 'left' },
-        { id: 'phone', label: 'Phone', width: 82, align: 'left' },
-        { id: 'email', label: 'Email', width: 132, align: 'left' },
-        { id: 'district', label: 'District', width: 75, align: 'left' },
-        { id: 'batch', label: 'Batch', width: 80, align: 'left' },
-        { id: 'payment', label: 'Payment', width: 60, align: 'center' },
-        { id: 'status', label: 'Status', width: 68, align: 'center' },
-        { id: 'approved', label: 'Approval Date', width: 67, align: 'center' },
+        { id: 'sl', label: '#', width: 28, align: 'center' },
+        { id: 'id', label: 'Membership ID', width: 84, align: 'center' },
+        { id: 'name', label: 'Full Name', width: 155, align: 'left' },
+        { id: 'phone', label: 'Phone', width: 84, align: 'left' },
+        { id: 'place', label: 'Place', width: 104, align: 'left' },
+        { id: 'mandalam', label: 'Mandalam', width: 104, align: 'left' },
+        { id: 'district', label: 'District', width: 104, align: 'left' },
+        { id: 'batch', label: 'Batch', width: 122, align: 'left' },
       ];
 
       // Helper to draw document header on Page 1
@@ -337,10 +345,12 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
         // Filter summary line
         const filterParts = [];
         filterParts.push(`Batch: ${batchNameLabel}`);
-        if (query.district) filterParts.push(`District: ${query.district}`);
-        if (query.thaluk) filterParts.push(`Taluk: ${query.thaluk}`);
-        if (query.mandalam) filterParts.push(`Mandalam: ${query.mandalam}`);
-        if (query.panchayath) filterParts.push(`Panchayath: ${query.panchayath}`);
+        if (filters.district && filters.district !== 'all') filterParts.push(`District: ${filters.district}`);
+        if ((filters.taluk && filters.taluk !== 'all') || (filters.thaluk && filters.thaluk !== 'all')) {
+          filterParts.push(`Taluk: ${filters.taluk || filters.thaluk}`);
+        }
+        if (filters.mandalam && filters.mandalam !== 'all') filterParts.push(`Mandalam: ${filters.mandalam}`);
+        if (filters.panchayath && filters.panchayath !== 'all') filterParts.push(`Panchayath: ${filters.panchayath}`);
         if (query.membershipStatus) filterParts.push(`Status: ${query.membershipStatus.toUpperCase()}`);
         if (query.paymentStatus) filterParts.push(`Payment: ${query.paymentStatus.toUpperCase()}`);
         if (filters.search) filterParts.push(`Search: "${filters.search}"`);
@@ -370,18 +380,18 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
       // Helper to draw table header row
       const drawTableHeader = (startY) => {
-        const rowHeight = 20;
+        const rowHeight = 22;
 
         // Header background fill
         doc.rect(marginLeft, startY, contentWidth, rowHeight).fill('#1e293b');
 
         // Column titles
         let currX = marginLeft;
-        doc.font(fontBold).fontSize(7.5).fillColor('#ffffff');
+        doc.font(fontBold).fontSize(8).fillColor('#ffffff');
 
         for (const col of columns) {
-          doc.text(col.label, currX + 3, startY + 5.5, {
-            width: col.width - 6,
+          doc.text(col.label, currX + 4, startY + 6.5, {
+            width: col.width - 8,
             align: col.align,
             lineBreak: false,
             ellipsis: true,
@@ -407,13 +417,13 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
       } else {
         // Stream records from MongoDB cursor with optimized batchSize
         const cursor = MembershipApplication.find(query)
-          .select('fullName phone email district batch paymentStatus membershipStatus membershipId approvedAt createdAt')
+          .select('fullName phone place mandalam district batch membershipId createdAt')
           .sort(sort)
           .lean()
           .cursor({ batchSize: 500 });
 
         let rowIndex = 0;
-        const rowHeight = 19;
+        const rowHeight = 22;
 
         for await (const docRecord of cursor) {
           rowIndex += 1;
@@ -439,80 +449,47 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
           let colX = marginLeft;
 
           // 1. Sl No
-          doc.font(fontReg).fontSize(7).fillColor('#64748b');
-          doc.text(String(rowIndex), colX + 2, currentY + 5, { width: columns[0].width - 4, align: 'center', lineBreak: false });
+          doc.font(fontReg).fontSize(7.5).fillColor('#64748b');
+          doc.text(String(rowIndex), colX + 2, currentY + 6.5, { width: columns[0].width - 4, align: 'center', lineBreak: false });
           colX += columns[0].width;
 
           // 2. Membership ID
           const memId = docRecord.membershipId || '—';
-          doc.font(docRecord.membershipId ? fontBold : fontReg).fontSize(7).fillColor(docRecord.membershipId ? '#15803d' : '#94a3b8');
-          doc.text(memId, colX + 2, currentY + 5, { width: columns[1].width - 4, align: 'center', lineBreak: false, ellipsis: true });
+          doc.font(docRecord.membershipId ? fontBold : fontReg).fontSize(7.5).fillColor(docRecord.membershipId ? '#15803d' : '#94a3b8');
+          doc.text(memId, colX + 2, currentY + 6.5, { width: columns[1].width - 4, align: 'center', lineBreak: false, ellipsis: true });
           colX += columns[1].width;
 
           // 3. Full Name
-          doc.font(fontBold).fontSize(7.5).fillColor('#0f172a');
-          doc.text(docRecord.fullName || '—', colX + 4, currentY + 5, { width: columns[2].width - 8, align: 'left', lineBreak: false, ellipsis: true });
+          doc.font(fontBold).fontSize(8).fillColor('#0f172a');
+          doc.text(docRecord.fullName || '—', colX + 4, currentY + 6.5, { width: columns[2].width - 8, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[2].width;
 
           // 4. Phone
-          doc.font(fontReg).fontSize(7).fillColor('#334155');
-          doc.text(formatPhone(docRecord.phone), colX + 3, currentY + 5, { width: columns[3].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          doc.font(fontReg).fontSize(7.5).fillColor('#334155');
+          doc.text(formatPhone(docRecord.phone), colX + 3, currentY + 6.5, { width: columns[3].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[3].width;
 
-          // 5. Email
-          doc.font(fontReg).fontSize(7).fillColor('#334155');
-          doc.text(docRecord.email || '—', colX + 3, currentY + 5, { width: columns[4].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          // 5. Place
+          doc.font(fontReg).fontSize(7.5).fillColor('#334155');
+          doc.text(docRecord.place || '—', colX + 3, currentY + 6.5, { width: columns[4].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[4].width;
 
-          // 6. District
-          doc.font(fontReg).fontSize(7).fillColor('#334155');
-          doc.text(docRecord.district || '—', colX + 3, currentY + 5, { width: columns[5].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          // 6. Mandalam
+          doc.font(fontReg).fontSize(7.5).fillColor('#334155');
+          doc.text(docRecord.mandalam || '—', colX + 3, currentY + 6.5, { width: columns[5].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[5].width;
 
-          // 7. Batch (O(1) resolution from batchMap)
-          const bId = docRecord.batch?._id ? docRecord.batch._id.toString() : (docRecord.batch ? docRecord.batch.toString() : null);
-          const batchTitle = (bId && batchMap.get(bId)) || docRecord.batch?.batchName || '—';
-          doc.font(fontReg).fontSize(7).fillColor('#334155');
-          doc.text(batchTitle, colX + 3, currentY + 5, { width: columns[6].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          // 7. District
+          doc.font(fontReg).fontSize(7.5).fillColor('#334155');
+          doc.text(docRecord.district || '—', colX + 3, currentY + 6.5, { width: columns[6].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[6].width;
 
-          // 8. Payment Status Badge
-          const isPaid = docRecord.paymentStatus === 'paid';
-          const payBg = isPaid ? '#dcfce7' : '#fef3c7';
-          const payText = isPaid ? '#166534' : '#92400e';
-          const payLabel = isPaid ? 'PAID' : 'PENDING';
-          const badgeW = columns[7].width - 12;
-          const badgeX = colX + 6;
-          doc.roundedRect(badgeX, currentY + 3.5, badgeW, 12, 3).fill(payBg);
-          doc.font(fontBold).fontSize(6).fillColor(payText);
-          doc.text(payLabel, badgeX, currentY + 5.5, { width: badgeW, align: 'center', lineBreak: false });
+          // 8. Batch (O(1) resolution from batchMap)
+          const bId = docRecord.batch?._id ? docRecord.batch._id.toString() : (docRecord.batch ? docRecord.batch.toString() : null);
+          const batchTitle = (bId && batchMap.get(bId)) || docRecord.batch?.batchName || '—';
+          doc.font(fontReg).fontSize(7.5).fillColor('#334155');
+          doc.text(batchTitle, colX + 3, currentY + 6.5, { width: columns[7].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[7].width;
-
-          // 9. Membership Status Badge
-          const mStatus = docRecord.membershipStatus || 'pending';
-          let statusBg = '#fef3c7';
-          let statusText = '#92400e';
-          let statusLabel = 'PENDING';
-          if (mStatus === 'approved') {
-            statusBg = '#dcfce7';
-            statusText = '#166534';
-            statusLabel = 'APPROVED';
-          } else if (mStatus === 'rejected') {
-            statusBg = '#fee2e2';
-            statusText = '#991b1b';
-            statusLabel = 'REJECTED';
-          }
-          const sBadgeW = columns[8].width - 12;
-          const sBadgeX = colX + 6;
-          doc.roundedRect(sBadgeX, currentY + 3.5, sBadgeW, 12, 3).fill(statusBg);
-          doc.font(fontBold).fontSize(6).fillColor(statusText);
-          doc.text(statusLabel, sBadgeX, currentY + 5.5, { width: sBadgeW, align: 'center', lineBreak: false });
-          colX += columns[8].width;
-
-          // 10. Approval Date
-          const appDate = docRecord.approvedAt ? formatDate(docRecord.approvedAt) : '—';
-          doc.font(fontReg).fontSize(6.5).fillColor('#64748b');
-          doc.text(appDate, colX + 2, currentY + 5.5, { width: columns[9].width - 4, align: 'center', lineBreak: false });
 
           currentY += rowHeight;
         }
