@@ -181,7 +181,7 @@ export const buildExportQuery = async (user, filters = {}) => {
 
   // Mandalam filter
   if (filters.mandalam && filters.mandalam !== 'all') {
-    query.mandalam = makeCaseInsensitiveExactRegex(filters.mandalam);
+    query.mandalam = buildBilingualLocationQuery('mandalam', filters.mandalam);
   }
 
   // Taluk filter

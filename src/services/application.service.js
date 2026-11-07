@@ -291,7 +291,7 @@ const getApplicationsByBatch = async (batchId, filters = {}) => {
     query.panchayath = makeCaseInsensitiveExactRegex(filters.panchayath);
   }
   if (filters.mandalam && filters.mandalam !== 'all') {
-    query.mandalam = makeCaseInsensitiveExactRegex(filters.mandalam);
+    query.mandalam = buildBilingualLocationQuery('mandalam', filters.mandalam);
   }
   if (filters.taluk && filters.taluk !== 'all') {
     query.thaluk = buildBilingualLocationQuery('taluk', filters.taluk);
