@@ -300,14 +300,15 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
 
       // Table Column Definitions (Sum = 785 pt)
       const columns = [
-        { id: 'sl', label: '#', width: 28, align: 'center' },
-        { id: 'id', label: 'Membership ID', width: 84, align: 'center' },
-        { id: 'name', label: 'Full Name', width: 155, align: 'left' },
-        { id: 'phone', label: 'Phone', width: 84, align: 'left' },
-        { id: 'place', label: 'Place', width: 104, align: 'left' },
-        { id: 'mandalam', label: 'Mandalam', width: 104, align: 'left' },
-        { id: 'district', label: 'District', width: 104, align: 'left' },
-        { id: 'batch', label: 'Batch', width: 122, align: 'left' },
+        { id: 'sl', label: '#', width: 24, align: 'center' },
+        { id: 'id', label: 'Membership ID', width: 76, align: 'center' },
+        { id: 'name', label: 'Full Name', width: 135, align: 'left' },
+        { id: 'phone', label: 'Phone', width: 80, align: 'left' },
+        { id: 'place', label: 'Place', width: 92, align: 'left' },
+        { id: 'panchayath', label: 'Panchayath', width: 96, align: 'left' },
+        { id: 'mandalam', label: 'Mandalam', width: 94, align: 'left' },
+        { id: 'district', label: 'District', width: 88, align: 'left' },
+        { id: 'batch', label: 'Batch', width: 100, align: 'left' },
       ];
 
       // Helper to draw document header on Page 1
@@ -417,7 +418,7 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
       } else {
         // Stream records from MongoDB cursor with optimized batchSize
         const cursor = MembershipApplication.find(query)
-          .select('fullName phone place mandalam district batch membershipId createdAt')
+          .select('fullName phone place panchayath mandalam district batch membershipId createdAt')
           .sort(sort)
           .lean()
           .cursor({ batchSize: 500 });
@@ -460,13 +461,13 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
           colX += columns[1].width;
 
           // 3. Full Name
-          doc.font(fontBold).fontSize(8).fillColor('#0f172a');
-          doc.text(docRecord.fullName || '—', colX + 4, currentY + 6.5, { width: columns[2].width - 8, align: 'left', lineBreak: false, ellipsis: true });
+          doc.font(fontBold).fontSize(7.5).fillColor('#0f172a');
+          doc.text(docRecord.fullName || '—', colX + 3, currentY + 6.5, { width: columns[2].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[2].width;
 
           // 4. Phone
           doc.font(fontReg).fontSize(7.5).fillColor('#334155');
-          doc.text(formatPhone(docRecord.phone), colX + 3, currentY + 6.5, { width: columns[3].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          doc.text(formatPhone(docRecord.phone), colX + 2, currentY + 6.5, { width: columns[3].width - 4, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[3].width;
 
           // 5. Place
@@ -474,22 +475,27 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
           doc.text(docRecord.place || '—', colX + 3, currentY + 6.5, { width: columns[4].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[4].width;
 
-          // 6. Mandalam
+          // 6. Panchayath
           doc.font(fontReg).fontSize(7.5).fillColor('#334155');
-          doc.text(docRecord.mandalam || '—', colX + 3, currentY + 6.5, { width: columns[5].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          doc.text(docRecord.panchayath || '—', colX + 3, currentY + 6.5, { width: columns[5].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[5].width;
 
-          // 7. District
+          // 7. Mandalam
           doc.font(fontReg).fontSize(7.5).fillColor('#334155');
-          doc.text(docRecord.district || '—', colX + 3, currentY + 6.5, { width: columns[6].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          doc.text(docRecord.mandalam || '—', colX + 3, currentY + 6.5, { width: columns[6].width - 6, align: 'left', lineBreak: false, ellipsis: true });
           colX += columns[6].width;
 
-          // 8. Batch (O(1) resolution from batchMap)
+          // 8. District
+          doc.font(fontReg).fontSize(7.5).fillColor('#334155');
+          doc.text(docRecord.district || '—', colX + 3, currentY + 6.5, { width: columns[7].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          colX += columns[7].width;
+
+          // 9. Batch (O(1) resolution from batchMap)
           const bId = docRecord.batch?._id ? docRecord.batch._id.toString() : (docRecord.batch ? docRecord.batch.toString() : null);
           const batchTitle = (bId && batchMap.get(bId)) || docRecord.batch?.batchName || '—';
           doc.font(fontReg).fontSize(7.5).fillColor('#334155');
-          doc.text(batchTitle, colX + 3, currentY + 6.5, { width: columns[7].width - 6, align: 'left', lineBreak: false, ellipsis: true });
-          colX += columns[7].width;
+          doc.text(batchTitle, colX + 3, currentY + 6.5, { width: columns[8].width - 6, align: 'left', lineBreak: false, ellipsis: true });
+          colX += columns[8].width;
 
           currentY += rowHeight;
         }
