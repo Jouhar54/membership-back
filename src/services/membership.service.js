@@ -81,7 +81,7 @@ const markAsPaid = async (id, adminId) => {
 };
 
 const approveMembership = async (id, adminId) => {
-  let membership = await Membership.findById(id).populate('user');
+  let membership = await Membership.findById(id).populate('user').populate('batch');
   if (!membership) {
     const error = new Error('Membership not found');
     error.statusCode = 404;
@@ -103,7 +103,7 @@ const approveMembership = async (id, adminId) => {
     throw error;
   }
 
-  const memId = generateMembershipId();
+  const memId = await generateMembershipId(membership.batch);
 
   membership.membershipStatus = 'approved';
   membership.approvedBy = adminId;

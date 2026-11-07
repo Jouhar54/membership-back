@@ -13,6 +13,11 @@ const batchSchema = new mongoose.Schema({
     trim: true,
     uppercase: true,
   },
+  membershipPrefix: {
+    type: String,
+    trim: true,
+    uppercase: true,
+  },
   joinLink: {
     type: String,
     trim: true,

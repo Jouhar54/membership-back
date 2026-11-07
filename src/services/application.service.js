@@ -440,7 +440,7 @@ const approveApplication = async (id, adminId) => {
     throw error;
   }
 
-  const membershipId = generateMembershipId();
+  const membershipId = await generateMembershipId(application.batch);
 
   // Update statuses immediately
   application.membershipStatus = 'approved';
