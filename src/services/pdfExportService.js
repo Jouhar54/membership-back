@@ -326,8 +326,8 @@ export const generateMembersListPdf = async (stream, { user, filters = {} }) => 
         }
 
         // Organization & Campaign title
-        doc.font(fontBold).fontSize(12).fillColor('#0f172a');
-        doc.text('AALIA & ANVARIYYA ALUMNI ASSOCIATION', titleStartX, 28, { lineBreak: false });
+        doc.font(fontBold).fontSize(10.5).fillColor('#0f172a');
+        doc.text("ANWARI'S ASSOCIATION FOR LOYAL ISLAMIC ACTIVITIES - AALIA", titleStartX, 28, { lineBreak: false });
 
         doc.font(fontBold).fontSize(9.5).fillColor('#2563eb');
         doc.text('AALIA MEMBERSHIP CAMPAIGN 2026', titleStartX, 44, { lineBreak: false });
@@ -605,8 +605,8 @@ export const generateIndividualMemberPdf = async (stream, { memberId, user }) =>
       }
 
       // Header Typography
-      doc.font(fontBold).fontSize(11).fillColor('#ffffff');
-      doc.text('AALIA & ANVARIYYA ALUMNI ASSOCIATION', headerTextX, 41, { lineBreak: false });
+      doc.font(fontBold).fontSize(10.5).fillColor('#ffffff');
+      doc.text("ANWARI'S ASSOCIATION FOR LOYAL ISLAMIC ACTIVITIES - AALIA", headerTextX, 41, { lineBreak: false });
 
       doc.font(fontBold).fontSize(9).fillColor('#60a5fa');
       doc.text('AALIA MEMBERSHIP CAMPAIGN 2026', headerTextX, 56, { lineBreak: false });
