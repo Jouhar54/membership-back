@@ -19,22 +19,17 @@ async function migrate() {
   for (const batch of batches) {
     const config = getBatchConfig(batch);
 
-    // Fetch all approved members of this batch
+    // Fetch all approved members of this batch ordered by date & time of approval
     const applications = await MembershipApplication.find({
       batch: batch._id,
       membershipStatus: 'approved',
-    }).select('_id fullName membershipId');
+    })
+      .select('_id fullName membershipId approvedAt createdAt')
+      .sort({ approvedAt: 1, createdAt: 1, _id: 1 });
 
     if (applications.length === 0) {
       continue;
     }
-
-    // Sort alphabetically by cleaned fullName
-    applications.sort((a, b) => {
-      const nameA = (a.fullName || '').trim();
-      const nameB = (b.fullName || '').trim();
-      return nameA.localeCompare(nameB, 'en', { sensitivity: 'base' });
-    });
 
     const bulkOps = applications.map((app, index) => {
       const seqNumber = config.startSeq + index;
