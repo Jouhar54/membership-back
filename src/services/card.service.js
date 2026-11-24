@@ -226,11 +226,15 @@ export const generateCardBackBuffer = async (application = null) => {
   // 1. Draw Template Base
   ctx.drawImage(template, 0, 0, template.width, template.height);
 
-  // 2. Generate and draw custom QR Code
+  // 2. Clear QR & Text box safely (y: 280 to 480, keeping green line at y=559..567 100% intact)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(745, 280, 250, 200);
+
+  // 3. Generate and draw custom QR Code
   // The QR code links to https://www.youtube.com/@aaliavision6927 as specified
   const qrX = 763;
-  const qrY = 270;
-  const qrSize = 140;
+  const qrY = 292;
+  const qrSize = 98;
 
   const qrBuffer = await QRCode.toBuffer(CARD_QR_URL, {
     margin: 0,
@@ -244,22 +248,22 @@ export const generateCardBackBuffer = async (application = null) => {
   const qrImg = await loadImage(qrBuffer);
   ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-  // 3. Render clean labels below QR code (left-aligned with QR code)
+  // 4. Render clean labels below QR code (left-aligned with QR code)
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
 
   // MEMBER
-  ctx.fillStyle = '#262626';
-  ctx.font = 'bold 20px Arial';
-  ctx.fillText('MEMBER', qrX, qrY + qrSize + 16);
+  ctx.fillStyle = '#222222';
+  ctx.font = '900 18px Arial, sans-serif';
+  ctx.fillText('MEMBER', qrX, qrY + qrSize + 14);
 
   // IDENTITY CARD
-  ctx.fillText('IDENTITY CARD', qrX, qrY + qrSize + 42);
+  ctx.fillText('IDENTITY CARD', qrX, qrY + qrSize + 36);
 
   // Validity Date: "Valid Upto 31st Dec 2029"
-  ctx.fillStyle = '#3f3f46';
-  ctx.font = '500 15.5px Arial';
-  ctx.fillText(CARD_VALIDITY_TEXT, qrX, qrY + qrSize + 72);
+  ctx.fillStyle = '#333333';
+  ctx.font = '500 15px Arial, sans-serif';
+  ctx.fillText(CARD_VALIDITY_TEXT, qrX, qrY + qrSize + 60);
 
   return canvas.toBuffer('image/png');
 };
