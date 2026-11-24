@@ -52,7 +52,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Cache-Control', 'Pragma']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -68,9 +68,12 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Basic Route for testing
-app.get('/health', (req, res) => {
+const handleHealth = (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is running' });
-});
+};
+app.get('/health', handleHealth);
+app.get('/api/health', handleHealth);
+app.get('/api/v1/health', handleHealth);
 
 // Routes
 import authRoutes from './src/routes/auth.routes.js';
