@@ -23,6 +23,13 @@ router.post('/status', checkStatusValidation, applicationController.checkStatus)
 router.get('/districts', applicationController.getDistricts);
 router.get('/locations', applicationController.getLocations);
 router.get('/poster/:id', getPosterValidation, applicationController.getPoster);
+router.get('/card/back', applicationController.getCardBack);
+router.get('/card/:id/front', getPosterValidation, applicationController.getCardFront);
+router.get('/card/:id/back', applicationController.getCardBack);
+router.get('/card/:id/pdf', getPosterValidation, applicationController.getCardPdf);
+router.get('/:id/card/front', getPosterValidation, applicationController.getCardFront);
+router.get('/:id/card/back', applicationController.getCardBack);
+router.get('/:id/card/pdf', getPosterValidation, applicationController.getCardPdf);
 router.get('/:id', getPosterValidation, applicationController.getApplicationById);
 
 export default router;

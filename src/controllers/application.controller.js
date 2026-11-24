@@ -1,4 +1,5 @@
 import * as applicationService from '../services/application.service.js';
+import * as cardService from '../services/card.service.js';
 import { successResponse } from '../utils/response.js';
 
 const createApplication = async (req, res, next) => {
@@ -64,6 +65,62 @@ const getPoster = async (req, res, next) => {
     // Redirect to the Cloudinary URL so the image loads directly
     res.redirect(posterUrl);
   } catch (error) {
+    next(error);
+  }
+};
+
+const getCardFront = async (req, res, next) => {
+  try {
+    const application = await applicationService.getApplicationById(req.params.id);
+    if (application.membershipStatus !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Membership card is available only for approved applications.',
+      });
+    }
+    const buffer = await cardService.generateCardFrontBuffer(application);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCardBack = async (req, res, next) => {
+  try {
+    const buffer = await cardService.generateCardBackBuffer();
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCardPdf = async (req, res, next) => {
+  try {
+    const application = await applicationService.getApplicationById(req.params.id);
+    if (application.membershipStatus !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Membership card is available only for approved applications.',
+      });
+    }
+    const format = req.query.format === 'cr80' ? 'cr80' : 'a4';
+    const safeId = (application.membershipId || application._id.toString()).replace(/[/\\?%*:|"<>]/g, '-');
+    const filename = `aalia-card-${safeId}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    await cardService.generateCardPdf(application, res, format);
+  } catch (error) {
+    if (res.headersSent) {
+      res.end();
+      return;
+    }
     next(error);
   }
 };
@@ -207,6 +264,9 @@ export {
   updateApplication,
   checkStatus,
   getPoster,
+  getCardFront,
+  getCardBack,
+  getCardPdf,
   getApplicationById,
   listBatchApplications,
   markPaid,

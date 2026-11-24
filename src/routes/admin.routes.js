@@ -20,9 +20,13 @@ router.patch('/batch-admins/:id', authorize('admin'), updateBatchAdminValidation
 router.delete('/batch-admins/:id', authorize('admin'), adminController.deleteBatchAdmin);
 
 // 2. Admin & Batch Admin: PDF Exports (Must precede :batchId / :id parameter routes)
+router.get('/members/export/cards/pdf', authorize('admin', 'batch_admin'), adminController.exportBatchCardsPdf);
 router.get('/members/export/pdf', authorize('admin', 'batch_admin'), adminController.exportMembersPdf);
+router.get('/members/:id/card/pdf', authorize('admin', 'batch_admin'), adminController.exportMemberCardPdf);
 router.get('/members/:id/export/pdf', authorize('admin', 'batch_admin'), adminController.exportMemberDetailPdf);
+router.get('/applications/export/cards/pdf', authorize('admin', 'batch_admin'), adminController.exportBatchCardsPdf);
 router.get('/applications/export/pdf', authorize('admin', 'batch_admin'), adminController.exportMembersPdf);
+router.get('/applications/:id/card/pdf', authorize('admin', 'batch_admin'), adminController.exportMemberCardPdf);
 router.get('/applications/:id/export/pdf', authorize('admin', 'batch_admin'), adminController.exportMemberDetailPdf);
 
 // 3. Admin & Batch Admin: Application Management
