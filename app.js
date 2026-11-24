@@ -10,7 +10,9 @@ import './src/config/env.js';
 const app = express();
 
 // Security and middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 const allowedOrigins = [
   'http://localhost:5173',

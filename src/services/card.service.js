@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
 
 // Target QR URL specified by user
 const CARD_QR_URL = process.env.CARD_QR_URL || 'https://www.youtube.com/@aaliavision6927';
+const CARD_VALIDITY_TEXT = process.env.CARD_VALIDITY_TEXT || 'Valid Upto 31st Dec 2029';
 
 // Locate template paths
 const getCardTemplatePaths = () => {
@@ -227,9 +228,13 @@ export const generateCardBackBuffer = async (application = null) => {
 
   // 2. Generate and draw custom QR Code
   // The QR code links to https://www.youtube.com/@aaliavision6927 as specified
+  const qrX = 763;
+  const qrY = 270;
+  const qrSize = 140;
+
   const qrBuffer = await QRCode.toBuffer(CARD_QR_URL, {
     margin: 0,
-    width: 138,
+    width: qrSize,
     color: {
       dark: '#000000',
       light: '#ffffff',
@@ -237,8 +242,24 @@ export const generateCardBackBuffer = async (application = null) => {
   });
 
   const qrImg = await loadImage(qrBuffer);
-  // QR coordinates matching template: x: 763, y: 294, width: 138, height: 138
-  ctx.drawImage(qrImg, 763, 294, 138, 138);
+  ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+  // 3. Render clean labels below QR code (left-aligned with QR code)
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+
+  // MEMBER
+  ctx.fillStyle = '#262626';
+  ctx.font = 'bold 20px Arial';
+  ctx.fillText('MEMBER', qrX, qrY + qrSize + 16);
+
+  // IDENTITY CARD
+  ctx.fillText('IDENTITY CARD', qrX, qrY + qrSize + 42);
+
+  // Validity Date: "Valid Upto 31st Dec 2029"
+  ctx.fillStyle = '#3f3f46';
+  ctx.font = '500 15.5px Arial';
+  ctx.fillText(CARD_VALIDITY_TEXT, qrX, qrY + qrSize + 72);
 
   return canvas.toBuffer('image/png');
 };

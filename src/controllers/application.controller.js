@@ -80,6 +80,7 @@ const getCardFront = async (req, res, next) => {
     }
     const buffer = await cardService.generateCardFrontBuffer(application);
     res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=3600');
     res.send(buffer);
   } catch (error) {
@@ -91,6 +92,7 @@ const getCardBack = async (req, res, next) => {
   try {
     const buffer = await cardService.generateCardBackBuffer();
     res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(buffer);
   } catch (error) {
